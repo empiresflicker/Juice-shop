@@ -828,10 +828,26 @@
     </div>
     <div class="form-group">
       <label class="form-label">Category</label>
-      <select class="form-input" id="itemCategory">
+      <select class="form-input" id="itemCategory" onchange="onCategoryChange(this.value)">
         <option value="ingredient">🧪 Ingredient (juice mein use hota hai)</option>
         <option value="drink">🥤 Drink (seedha sell hoti hai — Coke, Sprite etc)</option>
       </select>
+    </div>
+
+    <!-- Pet/Carton calculator - sirf drink ke liye -->
+    <div id="petCalcFields" style="display:none; background:var(--bg); border-radius:10px; padding:12px; margin-bottom:14px;">
+      <div style="font-size:12px; font-weight:700; color:var(--orange); margin-bottom:10px;">📦 Pet / Carton Calculator</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+        <div>
+          <label class="form-label">Pet mein bottles</label>
+          <input type="number" class="form-input" id="petBottles" placeholder="e.g. 6" min="1" oninput="calcPetRate()">
+        </div>
+        <div>
+          <label class="form-label">Pet ki cost (Rs)</label>
+          <input type="number" class="form-input" id="petCost" placeholder="e.g. 750" min="0" oninput="calcPetRate()">
+        </div>
+      </div>
+      <div id="petRatePreview" style="font-size:13px; color:var(--green); font-weight:600;"></div>
     </div>
     <div class="form-group">
       <label class="form-label">Unit</label>
@@ -1247,10 +1263,12 @@ function renderStock() {
     const color = qty <= 0 ? '#d93025' : (minAlert > 0 && qty <= minAlert) ? '#f5a623' : '#2da866';
     const qtyClass = qty <= 0 ? 'red' : (minAlert > 0 && qty <= minAlert) ? 'medium' : '';
     const catBadge = item.category === 'drink' ? '<span class="badge badge-blue" style="font-size:10px;">🥤 Drink</span>' : '';
+    const itemCost = qty * (item.avgRate || item.rate || 0);
     return `<div class="list-item">
-      <div>
+      <div style="flex:1">
         <div class="list-item-name">${item.name} ${catBadge}</div>
         <div class="list-item-sub">Rate: Rs ${item.avgRate || item.rate || 0} / ${item.unit}</div>
+        <div style="font-size:12px;color:var(--orange);font-weight:600;margin-top:2px;">Total: Rs ${Math.round(itemCost).toLocaleString()}</div>
         <div class="stock-bar"><div class="stock-bar-fill" style="width:${pct}%;background:${color}"></div></div>
       </div>
       <div class="list-item-right" style="display:flex;align-items:center;gap:10px">
@@ -1275,6 +1293,7 @@ function openEditItem(id) {
   document.getElementById('addItemModalTitle').textContent = 'Item Edit Karo';
   document.getElementById('itemName').value = item.name;
   document.getElementById('itemCategory').value = item.category || 'ingredient';
+  onCategoryChange(item.category || 'ingredient');
   document.getElementById('itemUnit').value = item.unit;
   document.getElementById('itemQty').value = item.qty || 0;
   document.getElementById('itemRate').value = item.avgRate || item.rate || 0;
@@ -1318,6 +1337,10 @@ function resetItemForm() {
   document.getElementById('itemMinAlert').value = '';
   document.getElementById('editItemId').value = '';
   document.getElementById('saveItemBtn').textContent = 'Item Save Karo';
+  document.getElementById('petCalcFields').style.display = 'none';
+  document.getElementById('petBottles').value = '';
+  document.getElementById('petCost').value = '';
+  document.getElementById('petRatePreview').textContent = '';
 }
 
 // ==================== PURCHASE ====================
@@ -1337,6 +1360,23 @@ function renderPurchaseDropdown() {
     sel.innerHTML += `<option value="${item.id}">${item.name} (${formatQty(item.qty,item.unit)} ${item.unit} bachi)</option>`;
   });
   if (val) sel.value = val;
+}
+
+function onCategoryChange(val) {
+  document.getElementById('petCalcFields').style.display = val === 'drink' ? 'block' : 'none';
+}
+
+function calcPetRate() {
+  const bottles = parseFloat(document.getElementById('petBottles').value) || 0;
+  const cost = parseFloat(document.getElementById('petCost').value) || 0;
+  const preview = document.getElementById('petRatePreview');
+  if (bottles > 0 && cost > 0) {
+    const ratePerBottle = cost / bottles;
+    preview.textContent = `→ Ek bottle ka rate: Rs ${ratePerBottle.toFixed(2)}`;
+    document.getElementById('itemRate').value = ratePerBottle.toFixed(2);
+  } else {
+    preview.textContent = '';
+  }
 }
 
 function onPurchaseItemChange(val) {
