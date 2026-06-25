@@ -1,4 +1,4 @@
-const CACHE_NAME = 'juice-shop-v1';
+const CACHE_NAME = 'juice-shop-v3';
 const urlsToCache = [
   '/Juice-shop/',
   '/Juice-shop/index.html'
@@ -21,6 +21,7 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // Network first - always get fresh content
   event.respondWith(
     fetch(event.request).catch(() =>
       caches.match(event.request).then(r => r || caches.match('/Juice-shop/index.html'))
