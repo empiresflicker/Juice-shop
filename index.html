@@ -478,9 +478,88 @@
   .flex { display: flex; }
   .gap-8 { gap: 8px; }
   .flex-1 { flex: 1; }
+
+  /* Lock Screen */
+  #lockScreen {
+    position: fixed; inset: 0;
+    background: #0a0a0a;
+    z-index: 9999;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  #lockScreen.hidden { display: none; }
+  .lock-emoji { font-size: 56px; margin-bottom: 10px; }
+  .lock-title { font-size: 26px; font-weight: 800; color: #1a7a4a; margin-bottom: 4px; }
+  .lock-sub { font-size: 12px; color: #5a7a65; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; }
+
+  /* User select */
+  .user-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 320px; margin-bottom: 20px; }
+  .user-btn {
+    background: #1a1a1a; border: 2px solid #2a2a2a;
+    color: #ccc; padding: 14px 10px;
+    border-radius: 12px; font-size: 15px; font-weight: 600;
+    cursor: pointer; text-align: center; transition: all 0.15s;
+  }
+  .user-btn.selected { border-color: #1a7a4a; background: #0f2a1a; color: white; }
+  .user-btn:active { transform: scale(0.96); }
+
+  /* PIN dots */
+  .pin-dots { display: flex; gap: 16px; margin-bottom: 20px; }
+  .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #444; background: transparent; transition: all 0.15s; }
+  .pin-dot.filled { background: #1a7a4a; border-color: #1a7a4a; }
+
+  /* Keypad */
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 280px; }
+  .key-btn {
+    background: #1a1a1a; border: none; color: white;
+    padding: 18px; border-radius: 12px;
+    font-size: 22px; font-weight: 600;
+    cursor: pointer; transition: all 0.1s;
+  }
+  .key-btn:active { background: #2a2a2a; transform: scale(0.94); }
+  .key-btn.del { font-size: 18px; color: #888; }
+  .key-btn.empty { background: transparent; pointer-events: none; }
+
+  .lock-error { color: #d93025; font-size: 13px; margin-top: 12px; min-height: 20px; text-align: center; }
 </style>
 </head>
 <body>
+
+<!-- Lock Screen -->
+<div id="lockScreen">
+  <div class="lock-emoji">🍹</div>
+  <div class="lock-title">Juice Shop</div>
+  <div class="lock-sub">Aap Kaun Hain?</div>
+
+  <div class="user-grid">
+    <div class="user-btn" id="userBtn0" onclick="selectUser(0)">👑 King</div>
+    <div class="user-btn" id="userBtn1" onclick="selectUser(1)">🤝 Farman</div>
+  </div>
+
+  <div class="pin-dots" id="pinDots">
+    <div class="pin-dot" id="dot0"></div>
+    <div class="pin-dot" id="dot1"></div>
+    <div class="pin-dot" id="dot2"></div>
+    <div class="pin-dot" id="dot3"></div>
+  </div>
+
+  <div class="keypad">
+    <button class="key-btn" onclick="pinKey('1')">1</button>
+    <button class="key-btn" onclick="pinKey('2')">2</button>
+    <button class="key-btn" onclick="pinKey('3')">3</button>
+    <button class="key-btn" onclick="pinKey('4')">4</button>
+    <button class="key-btn" onclick="pinKey('5')">5</button>
+    <button class="key-btn" onclick="pinKey('6')">6</button>
+    <button class="key-btn" onclick="pinKey('7')">7</button>
+    <button class="key-btn" onclick="pinKey('8')">8</button>
+    <button class="key-btn" onclick="pinKey('9')">9</button>
+    <div class="key-btn empty"></div>
+    <button class="key-btn" onclick="pinKey('0')">0</button>
+    <button class="key-btn del" onclick="pinDel()">⌫</button>
+  </div>
+  <div class="lock-error" id="lockError"></div>
+</div>
 
 <!-- Header -->
 <div class="header">
@@ -489,7 +568,10 @@
       <h1>🍹 Juice Shop</h1>
       <div class="date" id="headerDate"></div>
     </div>
-    <div class="sync-dot" id="syncDot" title="Online"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="font-size:12px;color:rgba(255,255,255,0.8);font-weight:600" id="headerUser"></div>
+      <div class="sync-dot" id="syncDot" title="Online"></div>
+    </div>
   </div>
 </div>
 
@@ -653,17 +735,44 @@
 <div id="page-reports" class="page">
   <div class="tab-pills">
     <button class="tab-pill active" onclick="switchReportTab('today')">Aaj</button>
-    <button class="tab-pill" onclick="switchReportTab('week')">Is Hafta</button>
-    <button class="tab-pill" onclick="switchReportTab('month')">Is Mahine</button>
+    <button class="tab-pill" onclick="switchReportTab('date')">Date</button>
+    <button class="tab-pill" onclick="switchReportTab('week')">Hafta</button>
+    <button class="tab-pill" onclick="switchReportTab('month')">Mahina</button>
   </div>
-  <div id="reportContent">
+
+  <!-- Date picker - sirf date tab mein -->
+  <div id="datePicker" style="display:none; margin-bottom:12px;">
+    <input type="date" class="form-input" id="reportDate" onchange="updateReport()">
+  </div>
+
+  <div class="tab-pills" style="margin-bottom:12px;">
+    <button class="tab-pill active" onclick="switchReportSection('summary')">Summary</button>
+    <button class="tab-pill" onclick="switchReportSection('sales')">Sales</button>
+    <button class="tab-pill" onclick="switchReportSection('ingredients')">Ingredients</button>
+  </div>
+
+  <div id="reportSection-summary">
     <div class="card">
-      <div class="card-title">Aaj Ka Hisaab</div>
+      <div class="card-title" id="reportPeriodTitle">Aaj Ka Hisaab</div>
       <div id="reportSummary"></div>
     </div>
     <div class="card">
       <div class="card-title">Item-wise Sale</div>
       <div id="reportItemwise"></div>
+    </div>
+  </div>
+
+  <div id="reportSection-sales" style="display:none">
+    <div class="card">
+      <div class="card-title">Sari Sales</div>
+      <div id="reportSalesList"></div>
+    </div>
+  </div>
+
+  <div id="reportSection-ingredients" style="display:none">
+    <div class="card">
+      <div class="card-title">Ingredients Usage</div>
+      <div id="reportIngredients"></div>
     </div>
   </div>
 </div>
@@ -777,7 +886,16 @@
     </div>
     <div class="form-group">
       <label class="form-label">Juice / Shake Ka Naam</label>
-      <input type="text" class="form-input" id="recipeName" placeholder="e.g. Mango Shake">
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="recipeIconBtn" onclick="toggleIconPicker()" style="font-size:28px;width:52px;height:52px;border:1.5px solid var(--border);border-radius:10px;background:white;cursor:pointer;flex-shrink:0">🍹</button>
+        <input type="text" class="form-input" id="recipeName" placeholder="e.g. Mango Shake" style="flex:1">
+      </div>
+      <input type="hidden" id="recipeIcon" value="🍹">
+      <!-- Icon Picker -->
+      <div id="iconPicker" style="display:none;background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Icon chunein:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;" id="iconGrid"></div>
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">Prices (ek ya zyada — jitni chahein)</label>
@@ -808,10 +926,91 @@
   </div>
 </div>
 
+<!-- Sale Edit Modal -->
+<div class="modal-overlay" id="saleEditModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Sale Edit / Delete</div>
+      <button class="modal-close" onclick="closeModal('saleEditModal')">✕</button>
+    </div>
+    <div id="saleEditBody"></div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
+// ==================== PASSWORD ====================
+const USERS = [
+  { name: 'King', emoji: '👑', pin: '1200' },
+  { name: 'Farman', emoji: '🤝', pin: '1200' }
+];
+let selectedUser = null;
+let currentPin = '';
+let currentUserName = '';
+
+function selectUser(idx) {
+  selectedUser = idx;
+  document.querySelectorAll('.user-btn').forEach((b,i) => {
+    b.classList.toggle('selected', i === idx);
+  });
+  currentPin = '';
+  updateDots();
+  document.getElementById('lockError').textContent = '';
+}
+
+function pinKey(digit) {
+  if (selectedUser === null) {
+    document.getElementById('lockError').textContent = 'Pehle apna naam chunein';
+    return;
+  }
+  if (currentPin.length >= 4) return;
+  currentPin += digit;
+  updateDots();
+  if (currentPin.length === 4) {
+    setTimeout(checkPin, 200);
+  }
+}
+
+function pinDel() {
+  currentPin = currentPin.slice(0, -1);
+  updateDots();
+  document.getElementById('lockError').textContent = '';
+}
+
+function updateDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('dot' + i).classList.toggle('filled', i < currentPin.length);
+  }
+}
+
+function checkPin() {
+  const user = USERS[selectedUser];
+  if (currentPin === user.pin) {
+    currentUserName = user.name;
+    sessionStorage.setItem('juice_auth', '1');
+    sessionStorage.setItem('juice_user', user.name);
+    document.getElementById('lockScreen').classList.add('hidden');
+    // Show user name in header
+    document.getElementById('headerUser').textContent = user.emoji + ' ' + user.name;
+  } else {
+    document.getElementById('lockError').textContent = 'Galat PIN — dobara koshish karo';
+    currentPin = '';
+    updateDots();
+  }
+}
+
+// Check on load
+window.addEventListener('load', () => {
+  if (sessionStorage.getItem('juice_auth') === '1') {
+    currentUserName = sessionStorage.getItem('juice_user') || '';
+    document.getElementById('lockScreen').classList.add('hidden');
+    const user = USERS.find(u => u.name === currentUserName);
+    if (user) document.getElementById('headerUser').textContent = user.emoji + ' ' + user.name;
+  }
+});
+
 // ==================== FIREBASE ====================
 const firebaseConfig = {
   apiKey: "AIzaSyDr_nh2KkVJtZ2Pw2jXK5ys_gxdRn6WD8o",
@@ -945,11 +1144,14 @@ function updateDashboard() {
       return `<div class="sale-item">
         <div class="sale-item-left">
           <div class="sale-item-name">${s.recipeName} × ${s.qty}</div>
-          <div class="sale-item-time">${timeStr}</div>
+          <div class="sale-item-time">${timeStr}${s.soldBy ? ' · ' + s.soldBy : ''}</div>
         </div>
-        <div class="sale-item-right">
-          <div class="sale-item-amount">Rs ${Math.round(s.sellTotal||0)}</div>
-          <div class="sale-item-profit">Faida: Rs ${Math.round(saleProfit)}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="sale-item-right">
+            <div class="sale-item-amount">Rs ${Math.round(s.sellTotal||0)}</div>
+            <div class="sale-item-profit">Faida: Rs ${Math.round(saleProfit)}</div>
+          </div>
+          <button onclick="openSaleEdit('${s.id}')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--text-muted)">✎</button>
         </div>
       </div>`;
     }).join('');
@@ -1206,19 +1408,22 @@ function addIngredientRow(ing = {}) {
   const stockOptions = Object.values(stockItems).sort((a,b)=>a.name.localeCompare(b.name))
     .map(i => `<option value="${i.id}" ${ing.itemId===i.id?'selected':''}>${i.name}</option>`).join('');
   const div = document.createElement('div');
-  div.className = 'ingredient-row';
+  div.style.cssText = 'margin-bottom:10px;';
   div.innerHTML = `
-    <select onchange="updateRecipeCostPreview()">${stockOptions ? '<option value="">-- Item --</option>' + stockOptions : '<option>Pehle stock add karo</option>'}</select>
-    <input type="number" placeholder="Miqdar" value="${ing.qty||''}" min="0" step="any" oninput="updateRecipeCostPreview()">
-    <select onchange="updateRecipeCostPreview()">
-      <option value="ml" ${ing.unit==='ml'?'selected':''}>ml</option>
-      <option value="g" ${ing.unit==='g'?'selected':''}>g</option>
-      <option value="L" ${ing.unit==='L'?'selected':''}>L</option>
-      <option value="Kg" ${ing.unit==='Kg'?'selected':''}>Kg</option>
-      <option value="pcs" ${ing.unit==='pcs'?'selected':''}>pcs</option>
-      <option value="Doz" ${ing.unit==='Doz'?'selected':''}>Doz</option>
-    </select>
-    <button class="del-btn" onclick="this.parentElement.remove(); updateRecipeCostPreview()">✕</button>
+    <div class="ingredient-row">
+      <select onchange="updateRecipeCostPreview()">${stockOptions ? '<option value="">-- Item --</option>' + stockOptions : '<option>Pehle stock add karo</option>'}</select>
+      <input type="number" placeholder="Miqdar" value="${ing.qty||''}" min="0" step="any" oninput="updateRecipeCostPreview()">
+      <select onchange="updateRecipeCostPreview()">
+        <option value="ml" ${ing.unit==='ml'?'selected':''}>ml</option>
+        <option value="g" ${ing.unit==='g'?'selected':''}>g</option>
+        <option value="L" ${ing.unit==='L'?'selected':''}>L</option>
+        <option value="Kg" ${ing.unit==='Kg'?'selected':''}>Kg</option>
+        <option value="pcs" ${ing.unit==='pcs'?'selected':''}>pcs</option>
+        <option value="Doz" ${ing.unit==='Doz'?'selected':''}>Doz</option>
+      </select>
+      <button class="del-btn" onclick="this.closest('div').parentElement.remove(); updateRecipeCostPreview()">✕</button>
+    </div>
+    <div class="ing-cost-preview" style="font-size:11px; color:var(--orange); padding:2px 4px 6px 4px;"></div>
   `;
   container.appendChild(div);
   updateRecipeCostPreview();
@@ -1237,33 +1442,83 @@ function getRecipeIngredients() {
   }).filter(i => i.itemId && i.qty > 0);
 }
 
+function updateRecipeCostPreview() {
+  const rows = document.querySelectorAll('#ingredientRows .ingredient-row');
+  let totalCost = 0;
+
+  rows.forEach(row => {
+    const selects = row.querySelectorAll('select');
+    const input = row.querySelector('input');
+    const itemId = selects[0].value;
+    const qty = parseFloat(input.value) || 0;
+    const unit = selects[1].value;
+    const preview = row.parentElement.querySelector('.ing-cost-preview');
+
+    if (!itemId || !qty) {
+      if (preview) preview.textContent = '';
+      return;
+    }
+
+    const item = stockItems[itemId];
+    if (!item) { if (preview) preview.textContent = ''; return; }
+
+    const rate = item.avgRate || item.rate || 0;
+    let convertedQty = qty;
+    if (item.unit === 'L' && unit === 'ml') convertedQty = qty / 1000;
+    else if (item.unit === 'ml' && unit === 'L') convertedQty = qty * 1000;
+    else if (item.unit === 'Kg' && unit === 'g') convertedQty = qty / 1000;
+    else if (item.unit === 'g' && unit === 'Kg') convertedQty = qty * 1000;
+    else if (item.unit === 'Doz' && unit === 'pcs') convertedQty = qty / 12;
+
+    const cost = convertedQty * rate;
+    totalCost += cost;
+    if (preview) preview.textContent = `→ Rs ${cost.toFixed(2)} (${item.name}: Rs ${rate}/${item.unit})`;
+  });
+
+  document.getElementById('recipeCostPreview').textContent = 'Rs ' + totalCost.toFixed(2);
+}
+
 function calculateRecipeCost(ingredients) {
   let cost = 0;
   ingredients.forEach(ing => {
     const item = stockItems[ing.itemId];
     if (!item) return;
     const rate = item.avgRate || item.rate || 0;
-    // Convert units if needed
     let qty = ing.qty;
-    let itemRate = rate; // per item.unit
-    // Basic conversion
     if (item.unit === 'L' && ing.unit === 'ml') { qty = ing.qty / 1000; }
     else if (item.unit === 'ml' && ing.unit === 'L') { qty = ing.qty * 1000; }
     else if (item.unit === 'Kg' && ing.unit === 'g') { qty = ing.qty / 1000; }
     else if (item.unit === 'g' && ing.unit === 'Kg') { qty = ing.qty * 1000; }
     else if (item.unit === 'Doz' && ing.unit === 'pcs') { qty = ing.qty / 12; }
-    cost += qty * itemRate;
+    cost += qty * rate;
   });
   return cost;
 }
 
-function updateRecipeCostPreview() {
-  const ings = getRecipeIngredients();
-  const cost = calculateRecipeCost(ings);
-  document.getElementById('recipeCostPreview').textContent = 'Rs ' + cost.toFixed(2);
+// ==================== ICON PICKER ====================
+const ALL_ICONS = ['🥭','🍎','🍏','🍌','🍋','🍊','🍇','🫐','🍓','🍑','🍒','🥝','🍈','🍉','🌿','🥕','🌾','🥤','🧃','🍹','🍺','🫧','🥛','💧','⚡','💚','📦','🌟','✨','🧊','🍦','🫙'];
+
+function toggleIconPicker() {
+  const picker = document.getElementById('iconPicker');
+  if (picker.style.display === 'none') {
+    // Build grid
+    const grid = document.getElementById('iconGrid');
+    grid.innerHTML = ALL_ICONS.map(icon => `
+      <button onclick="selectIcon('${icon}')" style="font-size:24px;width:40px;height:40px;border:1.5px solid var(--border);border-radius:8px;background:white;cursor:pointer;">${icon}</button>
+    `).join('');
+    picker.style.display = 'block';
+  } else {
+    picker.style.display = 'none';
+  }
 }
 
-// ==================== PRICE ROWS ====================
+function selectIcon(icon) {
+  document.getElementById('recipeIcon').value = icon;
+  document.getElementById('recipeIconBtn').textContent = icon;
+  document.getElementById('iconPicker').style.display = 'none';
+}
+
+
 function addPriceRow(label='', price='') {
   const container = document.getElementById('priceRows');
   const div = document.createElement('div');
@@ -1307,6 +1562,7 @@ function setPriceRows(prices) {
 
 async function saveRecipe() {
   const name = document.getElementById('recipeName').value.trim();
+  const icon = document.getElementById('recipeIcon').value || getJuiceIcon(name);
   const prices = getPrices();
   const ingredients = getRecipeIngredients();
   const editId = document.getElementById('editRecipeId').value;
@@ -1316,9 +1572,9 @@ async function saveRecipe() {
   if (ingredients.length === 0) { showToast('Kam az kam ek ingredient add karo'); return; }
 
   const costPerGlass = calculateRecipeCost(ingredients);
-  const sellPrice = prices[0].price; // default = first price
+  const sellPrice = prices[0].price;
   const data = {
-    name, prices, sellPrice, ingredients, costPerGlass,
+    name, icon, prices, sellPrice, ingredients, costPerGlass,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
@@ -1341,6 +1597,9 @@ function openEditRecipe(id) {
   document.getElementById('recipeName').value = recipe.name;
   document.getElementById('editRecipeId').value = id;
   document.getElementById('saveRecipeBtn').textContent = 'Update Karo';
+  const icon = recipe.icon || getJuiceIcon(recipe.name);
+  document.getElementById('recipeIcon').value = icon;
+  document.getElementById('recipeIconBtn').textContent = icon;
   setPriceRows(recipe.prices || [{ label: '', price: recipe.sellPrice || 0 }]);
   document.getElementById('ingredientRows').innerHTML = '';
   (recipe.ingredients || []).forEach(ing => addIngredientRow(ing));
@@ -1355,6 +1614,9 @@ function resetRecipeForm() {
   document.getElementById('saveRecipeBtn').textContent = 'Recipe Save Karo';
   document.getElementById('ingredientRows').innerHTML = '';
   document.getElementById('recipeCostPreview').textContent = 'Rs 0';
+  document.getElementById('recipeIcon').value = '🍹';
+  document.getElementById('recipeIconBtn').textContent = '🍹';
+  document.getElementById('iconPicker').style.display = 'none';
   setPriceRows([]);
 }
 
@@ -1400,6 +1662,37 @@ function filterJuices(val) {
   renderJuiceGrid();
 }
 
+function getJuiceIcon(name) {
+  const n = name.toLowerCase();
+  if (n.includes('mango')) return '🥭';
+  if (n.includes('banana')) return '🍌';
+  if (n.includes('mix') || (n.includes('apple') && n.includes('banana'))) return '🍎🍌';
+  if (n.includes('apple') && n.includes('juice')) return '🍏';
+  if (n.includes('apple')) return '🍎';
+  if (n.includes('sprite') && n.includes('aro')) return '🍋✨';
+  if (n.includes('aro')) return '🍋';
+  if (n.includes('falsa')) return '🫐';
+  if (n.includes('margarita')) return '🌿🥤';
+  if (n.includes('mint')) return '🌿';
+  if (n.includes('satu')) return '🌾';
+  if (n.includes('gajer') || n.includes('carrot')) return '🥕';
+  if (n.includes('musami') || n.includes('mosambi')) return '🍊';
+  if (n.includes('malta')) return '🍊🌟';
+  if (n.includes('great') || n.includes('grape')) return '🍇';
+  if (n.includes('sting')) return '⚡';
+  if (n.includes('7up')) return '💚';
+  if (n.includes('coke') || n.includes('cola')) return '🥤';
+  if (n.includes('gorma')) return '🧃';
+  if (n.includes('sheezan') && n.includes('dabba')) return '📦🍹';
+  if (n.includes('quice') && n.includes('dabba')) return '📦🧃';
+  if (n.includes('sheezan')) return '🍹';
+  if (n.includes('milk soda')) return '🥛💧';
+  if (n.includes('milk')) return '🥛';
+  if (n.includes('soda')) return '🫧';
+  if (n.includes('juice')) return '🥤';
+  return '🍹';
+}
+
 function renderJuiceGrid() {
   const container = document.getElementById('juiceGrid');
   const list = Object.values(recipes).filter(r => !juiceFilter || r.name.toLowerCase().includes(juiceFilter))
@@ -1414,6 +1707,7 @@ function renderJuiceGrid() {
     const cost = calculateRecipeCost(r.ingredients || []);
     const minProfit = Math.min(...prices.map(p=>p.price)) - cost;
     return `<div class="juice-btn" onclick="openSale('${r.id}')">
+      <div style="font-size:28px;margin-bottom:4px">${r.icon || getJuiceIcon(r.name)}</div>
       <div class="juice-btn-name">${r.name}</div>
       <div class="juice-btn-price">${priceStr}</div>
       <div class="juice-btn-cost">Min Faida: Rs ${minProfit.toFixed(0)}</div>
@@ -1575,6 +1869,7 @@ async function confirmSale() {
   batch.set(saleRef, {
     recipeId: currentSaleRecipe.id,
     recipeName: currentSaleRecipe.name,
+    soldBy: currentUserName || 'Unknown',
     qty, sellPrice,
     sellTotal: sellPrice * qty,
     costPerGlass: cost,
@@ -1589,31 +1884,72 @@ async function confirmSale() {
 }
 
 // ==================== REPORTS ====================
+let currentReportSection = 'summary';
+
 function switchReportTab(tab) {
   currentReportTab = tab;
-  document.querySelectorAll('#page-reports .tab-pill').forEach((btn, i) => {
-    btn.classList.toggle('active', (tab==='today'&&i===0)||(tab==='week'&&i===1)||(tab==='month'&&i===2));
+  const tabs = ['today','date','week','month'];
+  document.querySelectorAll('#page-reports .tab-pills:first-child .tab-pill').forEach((btn, i) => {
+    btn.classList.toggle('active', tabs[i] === tab);
+  });
+  document.getElementById('datePicker').style.display = tab === 'date' ? 'block' : 'none';
+  if (tab === 'date' && !document.getElementById('reportDate').value) {
+    document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+  }
+  updateReport();
+}
+
+function switchReportSection(section) {
+  currentReportSection = section;
+  ['summary','sales','ingredients'].forEach(s => {
+    document.getElementById('reportSection-' + s).style.display = s === section ? 'block' : 'none';
+  });
+  document.querySelectorAll('#page-reports .tab-pills:nth-child(3) .tab-pill').forEach((btn, i) => {
+    btn.classList.toggle('active', ['summary','sales','ingredients'][i] === section);
   });
   updateReport();
 }
 
-function updateReport() {
-  if (!document.getElementById('page-reports').classList.contains('active')) return;
+function getReportDateRange() {
   const now = new Date();
-  let startDate;
+  let startDate, endDate = new Date();
+  endDate.setHours(23,59,59,999);
+
   if (currentReportTab === 'today') {
     startDate = new Date(now); startDate.setHours(0,0,0,0);
+  } else if (currentReportTab === 'date') {
+    const val = document.getElementById('reportDate').value;
+    startDate = val ? new Date(val) : new Date(now);
+    startDate.setHours(0,0,0,0);
+    endDate = new Date(startDate); endDate.setHours(23,59,59,999);
   } else if (currentReportTab === 'week') {
-    startDate = new Date(now); startDate.setDate(now.getDate() - 7);
+    startDate = new Date(now); startDate.setDate(now.getDate() - 7); startDate.setHours(0,0,0,0);
   } else {
     startDate = new Date(now); startDate.setDate(1); startDate.setHours(0,0,0,0);
   }
+  return { startDate, endDate };
+}
+
+function updateReport() {
+  if (!document.getElementById('page-reports').classList.contains('active')) return;
+  const { startDate, endDate } = getReportDateRange();
 
   const filtered = allSales.filter(s => {
     const t = s.timestamp?.toDate?.() || new Date(0);
-    return t >= startDate;
+    return t >= startDate && t <= endDate;
   });
 
+  // Period title
+  const titles = { today: 'Aaj Ka Hisaab', date: 'Date Ka Hisaab', week: 'Is Hafte Ka Hisaab', month: 'Is Mahine Ka Hisaab' };
+  const titleEl = document.getElementById('reportPeriodTitle');
+  if (titleEl) titleEl.textContent = titles[currentReportTab] || 'Hisaab';
+
+  if (currentReportSection === 'summary') renderReportSummary(filtered);
+  else if (currentReportSection === 'sales') renderReportSales(filtered);
+  else if (currentReportSection === 'ingredients') renderReportIngredients(filtered);
+}
+
+function renderReportSummary(filtered) {
   let totalSale = 0, totalCost = 0, totalProfit = 0, totalGlasses = 0;
   const itemMap = {};
   filtered.forEach(s => {
@@ -1637,7 +1973,7 @@ function updateReport() {
   `;
 
   const sorted = Object.entries(itemMap).sort((a,b) => b[1].sale - a[1].sale);
-  document.getElementById('reportItemwise').innerHTML = sorted.length 
+  document.getElementById('reportItemwise').innerHTML = sorted.length
     ? sorted.map(([name, data]) => `
       <div class="list-item">
         <div><div class="list-item-name">${name}</div><div class="list-item-sub">${data.glasses} glass</div></div>
@@ -1646,7 +1982,125 @@ function updateReport() {
           <div class="list-item-sub">Faida: Rs ${Math.round(data.profit).toLocaleString()}</div>
         </div>
       </div>`).join('')
-    : '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px">Is waqt koi data nahi</div>';
+    : '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px">Koi data nahi</div>';
+}
+
+function renderReportSales(filtered) {
+  const el = document.getElementById('reportSalesList');
+  if (!filtered.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px">Koi sale nahi</div>'; return; }
+  el.innerHTML = filtered.map(s => {
+    const t = s.timestamp?.toDate?.() || new Date();
+    const dateStr = t.toLocaleDateString('ur-PK', {day:'2-digit', month:'short'});
+    const timeStr = t.toLocaleTimeString('ur-PK', {hour:'2-digit', minute:'2-digit'});
+    const profit = (s.sellTotal||0) - (s.costTotal||0);
+    return `<div class="sale-item">
+      <div class="sale-item-left">
+        <div class="sale-item-name">${s.recipeName} × ${s.qty}</div>
+        <div class="sale-item-time">${dateStr} ${timeStr}${s.soldBy ? ' · ' + s.soldBy : ''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="sale-item-right">
+          <div class="sale-item-amount">Rs ${Math.round(s.sellTotal||0)}</div>
+          <div class="sale-item-profit">Faida: Rs ${Math.round(profit)}</div>
+        </div>
+        <button onclick="openSaleEdit('${s.id}')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;color:var(--text-muted)">✎</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderReportIngredients(filtered) {
+  const el = document.getElementById('reportIngredients');
+  if (!filtered.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px">Koi data nahi</div>'; return; }
+
+  // Calculate ingredient usage
+  const ingUsage = {};
+  filtered.forEach(s => {
+    const recipe = Object.values(recipes).find(r => r.id === s.recipeId);
+    if (!recipe) return;
+    (recipe.ingredients || []).forEach(ing => {
+      const item = stockItems[ing.itemId];
+      if (!item) return;
+      const key = ing.itemId;
+      if (!ingUsage[key]) ingUsage[key] = { name: item.name, unit: ing.unit, qty: 0, cost: 0 };
+      const usedQty = ing.qty * (s.qty || 1);
+      let convertedQty = usedQty;
+      if (item.unit === 'L' && ing.unit === 'ml') convertedQty = usedQty / 1000;
+      else if (item.unit === 'Kg' && ing.unit === 'g') convertedQty = usedQty / 1000;
+      else if (item.unit === 'Doz' && ing.unit === 'pcs') convertedQty = usedQty / 12;
+      const rate = item.avgRate || item.rate || 0;
+      ingUsage[key].qty += usedQty;
+      ingUsage[key].cost += convertedQty * rate;
+    });
+  });
+
+  const sorted = Object.values(ingUsage).sort((a,b) => b.cost - a.cost);
+  el.innerHTML = sorted.length ? sorted.map(ing => `
+    <div class="list-item">
+      <div><div class="list-item-name">${ing.name}</div><div class="list-item-sub">${ing.qty.toFixed(2)} ${ing.unit} use hua</div></div>
+      <div class="list-item-value">Rs ${Math.round(ing.cost)}</div>
+    </div>`).join('')
+    : '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px">Koi data nahi</div>';
+}
+
+// ==================== SALE EDIT / DELETE ====================
+function openSaleEdit(saleId) {
+  const s = allSales.find(x => x.id === saleId) || sales.find(x => x.id === saleId);
+  if (!s) return;
+  const t = s.timestamp?.toDate?.() || new Date();
+  const timeStr = t.toLocaleTimeString('ur-PK', {hour:'2-digit', minute:'2-digit'});
+  const dateStr = t.toLocaleDateString('ur-PK', {day:'2-digit', month:'short', year:'numeric'});
+
+  document.getElementById('saleEditBody').innerHTML = `
+    <div class="card" style="background:var(--bg);box-shadow:none;">
+      <div class="profit-row"><span>Item</span><span><strong>${s.recipeName}</strong></span></div>
+      <div class="profit-row"><span>Quantity</span><span>${s.qty} glass</span></div>
+      <div class="profit-row"><span>Price</span><span>Rs ${s.sellPrice}</span></div>
+      <div class="profit-row"><span>Total</span><span class="amount green">Rs ${Math.round(s.sellTotal||0)}</span></div>
+      <div class="profit-row"><span>Time</span><span>${dateStr} ${timeStr}</span></div>
+      ${s.soldBy ? `<div class="profit-row"><span>Sold By</span><span>${s.soldBy}</span></div>` : ''}
+    </div>
+    <div class="form-group mt-12">
+      <label class="form-label">Quantity Change Karo</label>
+      <input type="number" class="form-input" id="editSaleQty" value="${s.qty}" min="1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Price Change Karo (Rs)</label>
+      <input type="number" class="form-input" id="editSalePrice" value="${s.sellPrice}" min="0">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="saveSaleEdit('${saleId}')">✓ Update Karo</button>
+    <button class="btn btn-red btn-full mt-8" onclick="deleteSale('${saleId}')">🗑 Is Sale Ko Delete Karo</button>
+    <div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px">Delete karne par stock wapas nahi aayega</div>
+  `;
+  openModal('saleEditModal');
+}
+
+async function saveSaleEdit(saleId) {
+  const newQty = parseInt(document.getElementById('editSaleQty').value) || 1;
+  const newPrice = parseFloat(document.getElementById('editSalePrice').value) || 0;
+  const s = allSales.find(x => x.id === saleId);
+  if (!s) return;
+
+  const recipe = Object.values(recipes).find(r => r.id === s.recipeId);
+  const cost = recipe ? calculateRecipeCost(recipe.ingredients || []) : (s.costPerGlass || 0);
+
+  await db.collection('juiceShop_sales').doc(saleId).update({
+    qty: newQty,
+    sellPrice: newPrice,
+    sellTotal: newPrice * newQty,
+    costTotal: cost * newQty,
+    profit: (newPrice - cost) * newQty,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  closeModal('saleEditModal');
+  showToast('Sale update ho gai ✓');
+}
+
+async function deleteSale(saleId) {
+  if (!confirm('Pakka delete karna hai? Yeh wapas nahi aayega.')) return;
+  await db.collection('juiceShop_sales').doc(saleId).delete();
+  closeModal('saleEditModal');
+  showToast('Sale delete ho gai ✓');
 }
 
 // ==================== MODAL ====================
