@@ -1410,7 +1410,7 @@ function renderJuiceGrid() {
   }
   container.innerHTML = list.map(r => {
     const prices = r.prices || [{ label:'', price: r.sellPrice||0 }];
-    const priceStr = prices.map(p => p.label ? `${p.label}: Rs${p.price}` : `Rs ${p.price}`).join(' / ');
+    const priceStr = prices.map(p => p.label ? `${p.label}: Rs ${p.price}` : `Rs ${p.price}`).join(' / ');
     const cost = calculateRecipeCost(r.ingredients || []);
     const minProfit = Math.min(...prices.map(p=>p.price)) - cost;
     return `<div class="juice-btn" onclick="openSale('${r.id}')">
@@ -1681,15 +1681,15 @@ function showToast(msg) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
-// Unregister old service workers & clear cache
+// Clear all caches and force fresh load
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(regs => {
     regs.forEach(reg => reg.unregister());
   });
-  caches.keys().then(keys => {
-    keys.forEach(key => caches.delete(key));
-  });
 }
+caches.keys().then(keys => {
+  keys.forEach(key => caches.delete(key));
+});
 </script>
 </body>
 </html>
