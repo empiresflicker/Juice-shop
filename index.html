@@ -2146,7 +2146,13 @@ function openModal(id) {
   if (id === 'addRecipeModal') {
     if (document.getElementById('ingredientRows').children.length === 0) addIngredientRow();
   }
-  if (id === 'addItemModal') resetItemForm();
+  if (id === 'addItemModal') {
+    resetItemForm();
+    // Auto-select category based on current filter
+    if (stockCatFilter === 'drink') {
+      document.getElementById('itemCategory').value = 'drink';
+    }
+  }
 }
 
 function closeModal(id) {
