@@ -647,6 +647,14 @@
       <div class="section-title">Stock Items</div>
       <button class="btn btn-primary btn-sm" onclick="openModal('addItemModal')">+ Item</button>
     </div>
+
+    <!-- Category Filter -->
+    <div class="tab-pills" style="margin-bottom:10px;">
+      <button class="tab-pill active" id="catAll" onclick="filterStockCat('all')">Sab</button>
+      <button class="tab-pill" id="catIngredient" onclick="filterStockCat('ingredient')">🧪 Ingredients</button>
+      <button class="tab-pill" id="catDrink" onclick="filterStockCat('drink')">🥤 Drinks</button>
+    </div>
+
     <div class="search-box">
       <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" placeholder="Item dhoondo..." oninput="filterStock(this.value)">
@@ -813,6 +821,13 @@
     <div class="form-group">
       <label class="form-label">Item Ka Naam</label>
       <input type="text" class="form-input" id="itemName" placeholder="e.g. Milk, Mango, Sugar">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select class="form-input" id="itemCategory">
+        <option value="ingredient">🧪 Ingredient (juice mein use hota hai)</option>
+        <option value="drink">🥤 Drink (seedha sell hoti hai — Coke, Sprite etc)</option>
+      </select>
     </div>
     <div class="form-group">
       <label class="form-label">Unit</label>
@@ -1180,13 +1195,26 @@ function updateDashboard() {
 
 // ==================== STOCK ====================
 let stockFilter = '';
+let stockCatFilter = 'all';
+
 function filterStock(val) {
   stockFilter = val.toLowerCase();
   renderStock();
 }
 
+function filterStockCat(cat) {
+  stockCatFilter = cat;
+  document.querySelectorAll('#stockTab-current .tab-pills:nth-child(2) .tab-pill').forEach((btn, i) => {
+    btn.classList.toggle('active', ['all','ingredient','drink'][i] === cat);
+  });
+  renderStock();
+}
+
 function renderStock() {
-  const items = Object.values(stockItems).filter(i => !stockFilter || i.name.toLowerCase().includes(stockFilter));
+  let items = Object.values(stockItems);
+  if (stockFilter) items = items.filter(i => i.name.toLowerCase().includes(stockFilter));
+  if (stockCatFilter !== 'all') items = items.filter(i => (i.category || 'ingredient') === stockCatFilter);
+
   const container = document.getElementById('stockList');
   if (items.length === 0) {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">Koi item nahi</div></div>';
@@ -1199,9 +1227,10 @@ function renderStock() {
     const pct = minAlert > 0 ? Math.min(100, (qty/minAlert)*50) : 70;
     const color = qty <= 0 ? '#d93025' : (minAlert > 0 && qty <= minAlert) ? '#f5a623' : '#2da866';
     const qtyClass = qty <= 0 ? 'red' : (minAlert > 0 && qty <= minAlert) ? 'medium' : '';
+    const catBadge = item.category === 'drink' ? '<span class="badge badge-blue" style="font-size:10px;">🥤 Drink</span>' : '';
     return `<div class="list-item">
       <div>
-        <div class="list-item-name">${item.name}</div>
+        <div class="list-item-name">${item.name} ${catBadge}</div>
         <div class="list-item-sub">Rate: Rs ${item.avgRate || item.rate || 0} / ${item.unit}</div>
         <div class="stock-bar"><div class="stock-bar-fill" style="width:${pct}%;background:${color}"></div></div>
       </div>
@@ -1226,6 +1255,7 @@ function openEditItem(id) {
   if (!item) return;
   document.getElementById('addItemModalTitle').textContent = 'Item Edit Karo';
   document.getElementById('itemName').value = item.name;
+  document.getElementById('itemCategory').value = item.category || 'ingredient';
   document.getElementById('itemUnit').value = item.unit;
   document.getElementById('itemQty').value = item.qty || 0;
   document.getElementById('itemRate').value = item.avgRate || item.rate || 0;
@@ -1237,6 +1267,7 @@ function openEditItem(id) {
 
 async function saveStockItem() {
   const name = document.getElementById('itemName').value.trim();
+  const category = document.getElementById('itemCategory').value;
   const unit = document.getElementById('itemUnit').value;
   const qty = parseFloat(document.getElementById('itemQty').value) || 0;
   const rate = parseFloat(document.getElementById('itemRate').value) || 0;
@@ -1245,7 +1276,7 @@ async function saveStockItem() {
 
   if (!name) { showToast('Naam likhna zaroori hai'); return; }
 
-  const data = { name, unit, qty, rate, avgRate: rate, minAlert, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+  const data = { name, category, unit, qty, rate, avgRate: rate, minAlert, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
 
   if (editId) {
     await db.collection('juiceShop_stock').doc(editId).update(data);
@@ -1262,6 +1293,7 @@ async function saveStockItem() {
 function resetItemForm() {
   document.getElementById('addItemModalTitle').textContent = 'Naya Item Add Karo';
   document.getElementById('itemName').value = '';
+  document.getElementById('itemCategory').value = 'ingredient';
   document.getElementById('itemQty').value = '';
   document.getElementById('itemRate').value = '';
   document.getElementById('itemMinAlert').value = '';
@@ -2035,11 +2067,16 @@ function renderReportIngredients(filtered) {
   });
 
   const sorted = Object.values(ingUsage).sort((a,b) => b.cost - a.cost);
+  const grandTotal = sorted.reduce((sum, ing) => sum + ing.cost, 0);
   el.innerHTML = sorted.length ? sorted.map(ing => `
     <div class="list-item">
       <div><div class="list-item-name">${ing.name}</div><div class="list-item-sub">${ing.qty.toFixed(2)} ${ing.unit} use hua</div></div>
       <div class="list-item-value">Rs ${Math.round(ing.cost)}</div>
-    </div>`).join('')
+    </div>`).join('') + `
+    <div class="profit-row" style="margin-top:10px;padding-top:10px;border-top:2px solid var(--border)">
+      <strong>Total Ingredients Cost</strong>
+      <strong class="amount red">Rs ${Math.round(grandTotal).toLocaleString()}</strong>
+    </div>`
     : '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px">Koi data nahi</div>';
 }
 
