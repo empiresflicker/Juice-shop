@@ -961,6 +961,19 @@
   </div>
 </div>
 
+<!-- Item History Modal -->
+<div class="modal-overlay" id="itemHistoryModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="itemHistoryTitle">Purchase History</div>
+      <button class="modal-close" onclick="closeModal('itemHistoryModal')">✕</button>
+    </div>
+    <div id="itemHistoryBody">
+      <div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">Load ho raha hai...</div></div>
+    </div>
+  </div>
+</div>
+
 <!-- Sale Edit Modal -->
 <div class="modal-overlay" id="saleEditModal">
   <div class="modal">
@@ -1277,6 +1290,7 @@ function renderStock() {
           <div class="list-item-sub">${item.unit}</div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="openEditItem('${item.id}')">✎</button>
+        <button class="btn btn-ghost btn-sm" onclick="openItemHistory('${item.id}','${item.name}')" style="font-size:11px;">📋</button>
       </div>
     </div>`;
   }).join('');
@@ -1807,6 +1821,7 @@ function renderJuiceGrid() {
 }
 
 let currentSalePrice = 0;
+let currentSaleIngredients = []; // adjusted ingredients
 
 function openSale(recipeId) {
   currentSaleRecipe = recipes[recipeId];
@@ -1814,10 +1829,11 @@ function openSale(recipeId) {
   currentSaleQty = 1;
   const prices = currentSaleRecipe.prices || [{ label:'', price: currentSaleRecipe.sellPrice||0 }];
   currentSalePrice = prices[0].price;
+  // Deep copy ingredients
+  currentSaleIngredients = (currentSaleRecipe.ingredients || []).map(i => ({...i}));
 
   document.getElementById('saleModalTitle').textContent = currentSaleRecipe.name;
 
-  // Price buttons
   const priceHtml = `
     <div style="margin-bottom:12px;">
       <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">Price chunein:</div>
@@ -1839,6 +1855,16 @@ function openSale(recipeId) {
       </div>
     </div>`;
 
+  // Ingredients adjust section
+  const ingHtml = `
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text-muted);">Ingredients (1 glass)</div>
+        <button onclick="resetSaleIngredients()" style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:white;cursor:pointer;color:var(--text-muted)">↺ Reset</button>
+      </div>
+      <div id="saleIngRows">${renderSaleIngRows()}</div>
+    </div>`;
+
   document.getElementById('saleModalBody').innerHTML = `
     ${priceHtml}
     <div class="qty-picker">
@@ -1846,6 +1872,7 @@ function openSale(recipeId) {
       <div class="qty-display" id="saleQty">1</div>
       <button class="qty-btn" onclick="changeQty(1)">+</button>
     </div>
+    ${ingHtml}
     <div class="card" style="background:var(--bg); box-shadow:none;">
       <div class="profit-row"><span>Sell Price</span><span class="amount green" id="saleSellTotal">Rs 0</span></div>
       <div class="profit-row"><span>Cost Price</span><span class="amount red" id="saleCostTotal">Rs 0</span></div>
@@ -1857,6 +1884,31 @@ function openSale(recipeId) {
   `;
   updateSaleModal();
   openModal('saleModal');
+}
+
+function renderSaleIngRows() {
+  return currentSaleIngredients.map((ing, i) => {
+    const item = stockItems[ing.itemId];
+    if (!item) return '';
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <div style="flex:1;font-size:13px;font-weight:600;">${item.name}</div>
+      <input type="number" value="${ing.qty}" min="0" step="any"
+        style="width:80px;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none;"
+        onchange="updateSaleIng(${i}, this.value)">
+      <div style="font-size:12px;color:var(--text-muted);width:30px;">${ing.unit}</div>
+    </div>`;
+  }).join('');
+}
+
+function updateSaleIng(idx, val) {
+  currentSaleIngredients[idx].qty = parseFloat(val) || 0;
+  updateSaleModal();
+}
+
+function resetSaleIngredients() {
+  currentSaleIngredients = (currentSaleRecipe.ingredients || []).map(i => ({...i}));
+  document.getElementById('saleIngRows').innerHTML = renderSaleIngRows();
+  updateSaleModal();
 }
 
 function selectSalePrice(price, btn) {
@@ -1903,7 +1955,7 @@ function updateSaleModal() {
   if (!currentSaleRecipe) return;
   const qty = currentSaleQty;
   const sellPrice = currentSalePrice;
-  const cost = calculateRecipeCost(currentSaleRecipe.ingredients || []);
+  const cost = calculateRecipeCost(currentSaleIngredients);
 
   const qtyEl = document.getElementById('saleQty');
   const sellEl = document.getElementById('saleSellTotal');
@@ -1915,9 +1967,8 @@ function updateSaleModal() {
   if (profitEl) profitEl.textContent = 'Rs ' + Math.round((sellPrice - cost) * qty);
 
   // Stock check
-  const ings = currentSaleRecipe.ingredients || [];
   const issues = [];
-  ings.forEach(ing => {
+  currentSaleIngredients.forEach(ing => {
     const item = stockItems[ing.itemId];
     if (!item) return;
     let needed = ing.qty * qty;
@@ -1941,13 +1992,12 @@ async function confirmSale() {
   if (!currentSaleRecipe) return;
   const qty = currentSaleQty;
   const sellPrice = currentSalePrice;
-  const cost = calculateRecipeCost(currentSaleRecipe.ingredients || []);
+  const cost = calculateRecipeCost(currentSaleIngredients);
 
   const batch = db.batch();
-  const ings = currentSaleRecipe.ingredients || [];
-  for (const ing of ings) {
+  for (const ing of currentSaleIngredients) {
     const item = stockItems[ing.itemId];
-    if (!item) continue;
+    if (!item || !ing.qty) continue;
     let deduct = ing.qty * qty;
     if (item.unit === 'L' && ing.unit === 'ml') { deduct /= 1000; }
     else if (item.unit === 'Kg' && ing.unit === 'g') { deduct /= 1000; }
@@ -1966,6 +2016,7 @@ async function confirmSale() {
     costPerGlass: cost,
     costTotal: cost * qty,
     profit: (sellPrice - cost) * qty,
+    ingredients: currentSaleIngredients,
     timestamp: firebase.firestore.FieldValue.serverTimestamp()
   });
 
@@ -2198,7 +2249,54 @@ function renderReportIngredients(filtered) {
     : '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px">Koi data nahi</div>';
 }
 
-// ==================== SALE EDIT / DELETE ====================
+// ==================== ITEM HISTORY ====================
+async function openItemHistory(itemId, itemName) {
+  document.getElementById('itemHistoryTitle').textContent = `📋 ${itemName} — Purchase History`;
+  document.getElementById('itemHistoryBody').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Load ho raha hai...</div>';
+  openModal('itemHistoryModal');
+
+  const snap = await db.collection('juiceShop_purchases')
+    .where('itemId', '==', itemId)
+    .orderBy('timestamp', 'desc')
+    .limit(50)
+    .get();
+
+  if (snap.empty) {
+    document.getElementById('itemHistoryBody').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><div class="empty-state-text">Koi purchase history nahi</div></div>';
+    return;
+  }
+
+  let totalQty = 0, totalCost = 0;
+  const rows = snap.docs.map(doc => {
+    const p = doc.data();
+    const t = p.timestamp?.toDate?.() || new Date();
+    const dateStr = `${String(t.getDate()).padStart(2,'0')}/${String(t.getMonth()+1).padStart(2,'0')}/${t.getFullYear()}`;
+    const timeStr = t.toLocaleTimeString('ur-PK', {hour:'2-digit', minute:'2-digit'});
+    totalQty += p.qty || 0;
+    totalCost += p.total || 0;
+    return `<div class="list-item">
+      <div>
+        <div class="list-item-name">${dateStr} ${timeStr}</div>
+        <div class="list-item-sub">${p.qty} ${p.unit} @ Rs ${p.rate}/${p.unit}</div>
+      </div>
+      <div class="list-item-right">
+        <div class="list-item-value">Rs ${Math.round(p.total||0)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('itemHistoryBody').innerHTML = rows + `
+    <div class="profit-row" style="margin-top:10px;border-top:2px solid var(--border);padding-top:10px;">
+      <strong>Total Khareedari</strong>
+      <strong class="amount green">Rs ${Math.round(totalCost).toLocaleString()}</strong>
+    </div>
+    <div class="profit-row">
+      <span>Total Miqdar</span>
+      <span>${totalQty.toFixed(2)} ${snap.docs[0]?.data()?.unit || ''}</span>
+    </div>`;
+}
+
+
 function openSaleEdit(saleId) {
   const s = allSales.find(x => x.id === saleId) || sales.find(x => x.id === saleId);
   if (!s) return;
