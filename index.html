@@ -1681,15 +1681,13 @@ function showToast(msg) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
-// Clear all caches and force fresh load
+// Clear old caches
+caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+
+// Register SW for PWA install
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(regs => {
-    regs.forEach(reg => reg.unregister());
-  });
+  navigator.serviceWorker.register('/Juice-shop/sw.js');
 }
-caches.keys().then(keys => {
-  keys.forEach(key => caches.delete(key));
-});
 </script>
 </body>
 </html>

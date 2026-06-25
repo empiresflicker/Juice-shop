@@ -2,7 +2,7 @@
   "name": "Juice Shop Manager",
   "short_name": "Juice Shop",
   "description": "Juice Shop Stock, Recipe & Sale Manager",
-  "start_url": "/Juice-shop/",
+  "start_url": "/Juice-shop/index.html",
   "scope": "/Juice-shop/",
   "display": "standalone",
   "background_color": "#0f5233",
