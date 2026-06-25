@@ -1016,14 +1016,14 @@ function checkPin() {
   }
 }
 
-// Check on load
+// Check on load - har baar password manga
 window.addEventListener('load', () => {
-  if (sessionStorage.getItem('juice_auth') === '1') {
-    currentUserName = sessionStorage.getItem('juice_user') || '';
-    document.getElementById('lockScreen').classList.add('hidden');
-    const user = USERS.find(u => u.name === currentUserName);
-    if (user) document.getElementById('headerUser').textContent = user.emoji + ' ' + user.name;
-  }
+  // Hamesha lock karo jab page load ho
+  sessionStorage.removeItem('juice_auth');
+  sessionStorage.removeItem('juice_user');
+  currentUserName = '';
+  // Lock screen dikhao
+  document.getElementById('lockScreen').classList.remove('hidden');
 });
 
 // ==================== FIREBASE ====================
