@@ -1433,17 +1433,26 @@ function openSale(recipeId) {
   document.getElementById('saleModalTitle').textContent = currentSaleRecipe.name;
 
   // Price buttons
-  const priceHtml = prices.length > 1 ? `
+  const priceHtml = `
     <div style="margin-bottom:12px;">
       <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">Price chunein:</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;" id="salePriceBtns">
         ${prices.map((p,i) => `
           <button onclick="selectSalePrice(${p.price}, this)"
             style="padding:8px 16px;border-radius:20px;border:2px solid ${i===0?'var(--green)':'var(--border)'};background:${i===0?'var(--green)':'white'};color:${i===0?'white':'var(--text)'};font-weight:600;font-size:13px;cursor:pointer;">
-            ${p.label ? p.label+' ' : ''}Rs ${p.price}
+            ${p.label ? p.label : 'Rs '+p.price}
           </button>`).join('')}
+        <button onclick="selectCustomPrice(this)"
+          style="padding:8px 16px;border-radius:20px;border:2px solid var(--border);background:white;color:var(--text);font-weight:600;font-size:13px;cursor:pointer;">
+          ✎ Apni Price
+        </button>
       </div>
-    </div>` : '';
+      <div id="customPriceBox" style="display:none;margin-top:10px;">
+        <input type="number" id="customPriceInput" placeholder="Price likhein (Rs)" min="0"
+          style="width:100%;padding:12px 14px;border:1.5px solid var(--green);border-radius:10px;font-size:15px;outline:none;"
+          oninput="applyCustomPrice(this.value)">
+      </div>
+    </div>`;
 
   document.getElementById('saleModalBody').innerHTML = `
     ${priceHtml}
@@ -1475,7 +1484,29 @@ function selectSalePrice(price, btn) {
   btn.style.borderColor = 'var(--green)';
   btn.style.background = 'var(--green)';
   btn.style.color = 'white';
+  document.getElementById('customPriceBox').style.display = 'none';
   updateSaleModal();
+}
+
+function selectCustomPrice(btn) {
+  document.querySelectorAll('#salePriceBtns button').forEach(b => {
+    b.style.borderColor = 'var(--border)';
+    b.style.background = 'white';
+    b.style.color = 'var(--text)';
+  });
+  btn.style.borderColor = 'var(--orange)';
+  btn.style.background = 'var(--orange)';
+  btn.style.color = 'white';
+  document.getElementById('customPriceBox').style.display = 'block';
+  document.getElementById('customPriceInput').focus();
+}
+
+function applyCustomPrice(val) {
+  const price = parseFloat(val) || 0;
+  if (price > 0) {
+    currentSalePrice = price;
+    updateSaleModal();
+  }
 }
 
 function changeQty(delta) {
