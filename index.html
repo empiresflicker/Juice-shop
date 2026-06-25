@@ -2073,7 +2073,7 @@ function renderReportIngredients(filtered) {
       const item = stockItems[ing.itemId];
       if (!item) return;
       const key = ing.itemId;
-      if (!ingUsage[key]) ingUsage[key] = { name: item.name, unit: ing.unit, qty: 0, cost: 0 };
+      if (!ingUsage[key]) ingUsage[key] = { name: item.name, unit: ing.unit, qty: 0, cost: 0, itemId: ing.itemId };
       const usedQty = ing.qty * (s.qty || 1);
       let convertedQty = usedQty;
       if (item.unit === 'L' && ing.unit === 'ml') convertedQty = usedQty / 1000;
@@ -2086,14 +2086,33 @@ function renderReportIngredients(filtered) {
   });
 
   const sorted = Object.values(ingUsage).sort((a,b) => b.cost - a.cost);
-  const grandTotal = sorted.reduce((sum, ing) => sum + ing.cost, 0);
-  el.innerHTML = sorted.length ? sorted.map(ing => `
-    <div class="list-item">
-      <div><div class="list-item-name">${ing.name}</div><div class="list-item-sub">${ing.qty.toFixed(2)} ${ing.unit} use hua</div></div>
-      <div class="list-item-value">Rs ${Math.round(ing.cost)}</div>
-    </div>`).join('') + `
-    <div class="profit-row" style="margin-top:10px;padding-top:10px;border-top:2px solid var(--border)">
-      <strong>Total Ingredients Cost</strong>
+  
+  // Alag karo ingredients aur drinks
+  const ingItems = sorted.filter(i => (stockItems[i.itemId]?.category || 'ingredient') === 'ingredient');
+  const drinkItems = sorted.filter(i => stockItems[i.itemId]?.category === 'drink');
+  
+  const ingTotal = ingItems.reduce((sum, i) => sum + i.cost, 0);
+  const drinkTotal = drinkItems.reduce((sum, i) => sum + i.cost, 0);
+  const grandTotal = ingTotal + drinkTotal;
+
+  const renderSection = (items, title, color) => items.length ? `
+    <div style="font-size:12px;font-weight:700;color:${color};letter-spacing:0.5px;margin:12px 0 8px;">${title}</div>
+    ${items.map(ing => `
+      <div class="list-item">
+        <div><div class="list-item-name">${ing.name}</div><div class="list-item-sub">${ing.qty.toFixed(2)} ${ing.unit} use hua</div></div>
+        <div class="list-item-value">Rs ${Math.round(ing.cost)}</div>
+      </div>`).join('')}
+    <div class="profit-row" style="margin-top:6px;">
+      <span style="font-size:13px">Total</span>
+      <span class="amount" style="color:${color}">Rs ${Math.round(items.reduce((s,i)=>s+i.cost,0)).toLocaleString()}</span>
+    </div>
+    <div style="height:1px;background:var(--border);margin:10px 0;"></div>` : '';
+
+  el.innerHTML = sorted.length ? 
+    renderSection(ingItems, '🧪 INGREDIENTS', 'var(--blue)') +
+    renderSection(drinkItems, '🥤 DRINKS', 'var(--orange)') +
+    `<div class="profit-row" style="margin-top:4px;">
+      <strong>📦 Sab Ka Total</strong>
       <strong class="amount red">Rs ${Math.round(grandTotal).toLocaleString()}</strong>
     </div>`
     : '<div style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px">Koi data nahi</div>';
