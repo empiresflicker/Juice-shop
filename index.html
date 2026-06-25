@@ -2042,12 +2042,33 @@ function updateReport() {
 
 function renderReportSummary(filtered) {
   let totalSale = 0, totalCost = 0, totalProfit = 0, totalGlasses = 0;
+  let juiceSale = 0, juiceCost = 0, juiceProfit = 0, juiceGlasses = 0;
+  let drinkSale = 0, drinkCost = 0, drinkProfit = 0, drinkGlasses = 0;
   const itemMap = {};
+
   filtered.forEach(s => {
     totalSale += s.sellTotal || 0;
     totalCost += s.costTotal || 0;
     totalProfit += s.profit || 0;
     totalGlasses += s.qty || 0;
+
+    // Check if it's a drink recipe
+    const recipe = Object.values(recipes).find(r => r.id === s.recipeId);
+    const isDrink = recipe?.ingredients?.length === 1 &&
+      stockItems[recipe.ingredients[0]?.itemId]?.category === 'drink';
+
+    if (isDrink) {
+      drinkSale += s.sellTotal || 0;
+      drinkCost += s.costTotal || 0;
+      drinkProfit += s.profit || 0;
+      drinkGlasses += s.qty || 0;
+    } else {
+      juiceSale += s.sellTotal || 0;
+      juiceCost += s.costTotal || 0;
+      juiceProfit += s.profit || 0;
+      juiceGlasses += s.qty || 0;
+    }
+
     if (!itemMap[s.recipeName]) itemMap[s.recipeName] = { glasses: 0, sale: 0, profit: 0 };
     itemMap[s.recipeName].glasses += s.qty || 0;
     itemMap[s.recipeName].sale += s.sellTotal || 0;
@@ -2055,12 +2076,31 @@ function renderReportSummary(filtered) {
   });
 
   const margin = totalSale > 0 ? Math.round((totalProfit/totalSale)*100) : 0;
+  const juiceMargin = juiceSale > 0 ? Math.round((juiceProfit/juiceSale)*100) : 0;
+  const drinkMargin = drinkSale > 0 ? Math.round((drinkProfit/drinkSale)*100) : 0;
+
   document.getElementById('reportSummary').innerHTML = `
     <div class="profit-row"><span>Total Sale</span><span class="amount green">Rs ${Math.round(totalSale).toLocaleString()}</span></div>
     <div class="profit-row"><span>Total Cost</span><span class="amount red">Rs ${Math.round(totalCost).toLocaleString()}</span></div>
     <div class="profit-row"><span>Total Faida</span><span class="amount green">Rs ${Math.round(totalProfit).toLocaleString()}</span></div>
-    <div class="profit-row"><span>Glasses</span><span class="amount">${totalGlasses}</span></div>
-    <div class="profit-row"><span>Margin</span><span class="amount">${margin}%</span></div>
+    <div class="profit-row"><span>Glasses/Bottles</span><span class="amount">${totalGlasses}</span></div>
+    <div class="profit-row"><span><strong>Margin</strong></span><span class="amount"><strong>${margin}%</strong></span></div>
+
+    ${juiceGlasses > 0 ? `
+    <div style="height:1px;background:var(--border);margin:10px 0;"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px;">🧃 JUICES / SHAKES</div>
+    <div class="profit-row"><span>Sale</span><span class="amount green">Rs ${Math.round(juiceSale).toLocaleString()}</span></div>
+    <div class="profit-row"><span>Faida</span><span class="amount green">Rs ${Math.round(juiceProfit).toLocaleString()}</span></div>
+    <div class="profit-row"><span>Glasses</span><span>${juiceGlasses}</span></div>
+    <div class="profit-row"><span>Margin</span><span class="amount">${juiceMargin}%</span></div>` : ''}
+
+    ${drinkGlasses > 0 ? `
+    <div style="height:1px;background:var(--border);margin:10px 0;"></div>
+    <div style="font-size:11px;font-weight:700;color:var(--orange);margin-bottom:6px;">🥤 DRINKS / BOTTLES</div>
+    <div class="profit-row"><span>Sale</span><span class="amount green">Rs ${Math.round(drinkSale).toLocaleString()}</span></div>
+    <div class="profit-row"><span>Faida</span><span class="amount green">Rs ${Math.round(drinkProfit).toLocaleString()}</span></div>
+    <div class="profit-row"><span>Bottles</span><span>${drinkGlasses}</span></div>
+    <div class="profit-row"><span>Margin</span><span class="amount">${drinkMargin}%</span></div>` : ''}
   `;
 
   const sorted = Object.entries(itemMap).sort((a,b) => b[1].sale - a[1].sale);
