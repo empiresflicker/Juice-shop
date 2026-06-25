@@ -485,16 +485,16 @@
     background: #0a0a0a;
     z-index: 9999;
     display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 24px;
+    align-items: center; justify-content: flex-end;
+    padding: 0 24px 40px;
   }
   #lockScreen.hidden { display: none; }
-  .lock-emoji { font-size: 56px; margin-bottom: 10px; }
-  .lock-title { font-size: 26px; font-weight: 800; color: #1a7a4a; margin-bottom: 4px; }
-  .lock-sub { font-size: 12px; color: #5a7a65; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; }
+  .lock-emoji { font-size: 56px; margin-bottom: 8px; }
+  .lock-title { font-size: 26px; font-weight: 800; color: #1a7a4a; margin-bottom: 2px; }
+  .lock-sub { font-size: 12px; color: #5a7a65; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 24px; }
 
   /* User select */
-  .user-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 320px; margin-bottom: 20px; }
+  .user-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 320px; margin-bottom: 16px; }
   .user-btn {
     background: #1a1a1a; border: 2px solid #2a2a2a;
     color: #ccc; padding: 14px 10px;
@@ -505,15 +505,15 @@
   .user-btn:active { transform: scale(0.96); }
 
   /* PIN dots */
-  .pin-dots { display: flex; gap: 16px; margin-bottom: 20px; }
-  .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #444; background: transparent; transition: all 0.15s; }
+  .pin-dots { display: flex; gap: 16px; margin-bottom: 16px; }
+  .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #444; background: transparent; transition: all 0.15s; }
   .pin-dot.filled { background: #1a7a4a; border-color: #1a7a4a; }
 
   /* Keypad */
-  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 280px; }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; max-width: 300px; }
   .key-btn {
     background: #1a1a1a; border: none; color: white;
-    padding: 18px; border-radius: 12px;
+    padding: 16px; border-radius: 12px;
     font-size: 22px; font-weight: 600;
     cursor: pointer; transition: all 0.1s;
   }
@@ -521,17 +521,21 @@
   .key-btn.del { font-size: 18px; color: #888; }
   .key-btn.empty { background: transparent; pointer-events: none; }
 
-  .lock-error { color: #d93025; font-size: 13px; margin-top: 12px; min-height: 20px; text-align: center; }
+  .lock-error { color: #d93025; font-size: 13px; margin-top: 10px; min-height: 20px; text-align: center; }
 </style>
 </head>
 <body>
 
 <!-- Lock Screen -->
 <div id="lockScreen">
-  <div class="lock-emoji">🍹</div>
-  <div class="lock-title">Juice Shop</div>
-  <div class="lock-sub">Aap Kaun Hain?</div>
+  <!-- Top branding -->
+  <div style="position:absolute;top:60px;left:0;right:0;text-align:center;">
+    <div class="lock-emoji">🍹</div>
+    <div class="lock-title">Juice Shop</div>
+    <div class="lock-sub">Aap Kaun Hain?</div>
+  </div>
 
+  <!-- Bottom controls -->
   <div class="user-grid">
     <div class="user-btn" id="userBtn0" onclick="selectUser(0)">👑 King</div>
     <div class="user-btn" id="userBtn1" onclick="selectUser(1)">🤝 Farman</div>
@@ -1221,7 +1225,22 @@ function renderStock() {
     return;
   }
   items.sort((a,b) => a.name.localeCompare(b.name));
-  container.innerHTML = items.map(item => {
+
+  // Calculate totals
+  const allItems = Object.values(stockItems);
+  const ingTotal = allItems.filter(i => (i.category||'ingredient') === 'ingredient')
+    .reduce((sum, i) => sum + ((i.qty||0) * (i.avgRate||i.rate||0)), 0);
+  const drinkTotal = allItems.filter(i => i.category === 'drink')
+    .reduce((sum, i) => sum + ((i.qty||0) * (i.avgRate||i.rate||0)), 0);
+  const grandTotal = ingTotal + drinkTotal;
+
+  const totalBar = `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid var(--border);">
+    ${stockCatFilter !== 'drink' ? `<div class="profit-row"><span>🧪 Ingredients Total</span><span class="amount" style="color:var(--blue)">Rs ${Math.round(ingTotal).toLocaleString()}</span></div>` : ''}
+    ${stockCatFilter !== 'ingredient' ? `<div class="profit-row"><span>🥤 Drinks Total</span><span class="amount" style="color:var(--orange)">Rs ${Math.round(drinkTotal).toLocaleString()}</span></div>` : ''}
+    <div class="profit-row"><span><strong>📦 Sab Ka Total</strong></span><span class="amount green"><strong>Rs ${Math.round(grandTotal).toLocaleString()}</strong></span></div>
+  </div>`;
+
+  container.innerHTML = totalBar + items.map(item => {
     const qty = item.qty || 0;
     const minAlert = item.minAlert || 0;
     const pct = minAlert > 0 ? Math.min(100, (qty/minAlert)*50) : 70;
@@ -2147,10 +2166,13 @@ function openModal(id) {
     if (document.getElementById('ingredientRows').children.length === 0) addIngredientRow();
   }
   if (id === 'addItemModal') {
-    resetItemForm();
-    // Auto-select category based on current filter
-    if (stockCatFilter === 'drink') {
-      document.getElementById('itemCategory').value = 'drink';
+    // Sirf tab reset karo jab naya item add ho — edit mein nahi
+    const editId = document.getElementById('editItemId').value;
+    if (!editId) {
+      resetItemForm();
+      if (stockCatFilter === 'drink') {
+        document.getElementById('itemCategory').value = 'drink';
+      }
     }
   }
 }
