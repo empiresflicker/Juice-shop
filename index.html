@@ -2973,20 +2973,36 @@ window.confirmSale = async function() {
 window.addEventListener('load', async () => {
   loadLocalStock();
   await initOfflineDB();
-  // Sync on network restore
-  window.addEventListener('online', () => {
-    syncOfflineQueue();
+
+  // Online event pe sync
+  window.addEventListener('online', async () => {
+    document.getElementById('syncDot').className = 'sync-dot';
+    showToast('Online — sync ho raha hai...');
+    await syncOfflineQueue();
   });
-  // Sync on startup if online
-  if (navigator.onLine) setTimeout(syncOfflineQueue, 3000);
+
+  // App start hone pe bhi sync karo agar online hai
+  if (navigator.onLine) {
+    // Firebase load hone ka wait karo phir sync
+    setTimeout(async () => {
+      const queue = await getAllQueue();
+      if (queue.length > 0) {
+        showToast(`${queue.length} pending entries sync ho rahi hain...`);
+        await syncOfflineQueue();
+      }
+    }, 4000);
+  }
 });
 
-// Clear old caches
-caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
-
-// Register SW for PWA install
+// Register SW
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/Juice-shop/sw.js');
+  navigator.serviceWorker.register('/Juice-shop/sw.js').then(reg => {
+    reg.addEventListener('updatefound', () => {
+      reg.installing?.addEventListener('statechange', e => {
+        if (e.target.state === 'activated') location.reload();
+      });
+    });
+  });
 }
 </script>
 </body>
