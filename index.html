@@ -708,13 +708,34 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Miqdar (quantity)</label>
-        <input type="number" class="form-input" id="purchaseQty" placeholder="e.g. 10" min="0" step="any">
+        <label class="form-label">Miqdar (quantity — bottles count)</label>
+        <input type="number" class="form-input" id="purchaseQty" placeholder="e.g. 10" min="0" step="any" oninput="updateAvgPreview()">
       </div>
       <div class="form-group">
-        <label class="form-label">Rate (Rs per unit)</label>
-        <input type="number" class="form-input" id="purchaseRate" placeholder="e.g. 150" min="0" step="any">
+        <label class="form-label">Rate (Rs per bottle/unit)</label>
+        <input type="number" class="form-input" id="purchaseRate" placeholder="e.g. 150" min="0" step="any" oninput="updateAvgPreview()">
       </div>
+
+      <!-- Pet/MT calculator in purchase -->
+      <div id="purchasePetCalc" style="display:none; background:var(--bg); border-radius:10px; padding:12px; margin-bottom:12px;">
+        <div style="font-size:12px; font-weight:700; color:var(--orange); margin-bottom:10px;" id="purchasePetTitle">📦 Pet Calculator</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+          <div>
+            <label class="form-label">Ek Pet/MT mein bottles</label>
+            <input type="number" class="form-input" id="purchasePetBottles" placeholder="e.g. 6" min="1" step="1" oninput="calcPurchasePetRate()">
+          </div>
+          <div>
+            <label class="form-label">Kitne Pet/MT khareeday</label>
+            <input type="number" class="form-input" id="purchasePetCount" placeholder="e.g. 2" min="1" step="1" oninput="calcPurchasePetRate()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ek Pet/MT ki cost (Rs)</label>
+          <input type="number" class="form-input" id="purchasePetCost" placeholder="e.g. 750" min="0" oninput="calcPurchasePetRate()">
+        </div>
+        <div id="purchasePetPreview" style="font-size:13px; color:var(--green); font-weight:600; padding:8px; background:white; border-radius:8px; min-height:30px;"></div>
+      </div>
+
       <div class="card" style="background:var(--bg); margin-bottom:0; box-shadow:none;">
         <div id="avgPreview" style="font-size:13px; color:var(--text-muted)">Rate aur quantity likho — average calculate hogi</div>
       </div>
@@ -1430,7 +1451,42 @@ function calcPetRate() {
 function onPurchaseItemChange(val) {
   document.getElementById('newItemFields').style.display = val === '__new__' ? 'block' : 'none';
   document.getElementById('avgPreview').textContent = 'Rate aur quantity likho — average calculate hogi';
+
+  // Show Pet/MT calculator if item is pet or mt category
+  const item = stockItems[val];
+  const isPetMt = item && (item.category === 'pet' || item.category === 'mt');
+  document.getElementById('purchasePetCalc').style.display = isPetMt ? 'block' : 'none';
+  if (isPetMt) {
+    document.getElementById('purchasePetTitle').textContent = item.category === 'pet' ? '📦 Pet Calculator' : '🧴 MT/Carton Calculator';
+    document.getElementById('purchasePetBottles').value = '';
+    document.getElementById('purchasePetCount').value = '';
+    document.getElementById('purchasePetCost').value = '';
+    document.getElementById('purchasePetPreview').textContent = '';
+  }
   updateAvgPreview();
+}
+
+function calcPurchasePetRate() {
+  const bottles = parseFloat(document.getElementById('purchasePetBottles').value) || 0;
+  const count = parseFloat(document.getElementById('purchasePetCount').value) || 0;
+  const cost = parseFloat(document.getElementById('purchasePetCost').value) || 0;
+  const preview = document.getElementById('purchasePetPreview');
+
+  if (bottles > 0 && count > 0 && cost > 0) {
+    const totalBottles = bottles * count;
+    const ratePerBottle = cost / bottles;
+    const totalCost = cost * count;
+    preview.innerHTML = `
+      Ek bottle: <strong>Rs ${ratePerBottle.toFixed(2)}</strong><br>
+      Total bottles: <strong>${totalBottles}</strong><br>
+      Total cost: <strong>Rs ${totalCost.toLocaleString()}</strong>
+    `;
+    document.getElementById('purchaseQty').value = totalBottles;
+    document.getElementById('purchaseRate').value = ratePerBottle.toFixed(2);
+    updateAvgPreview();
+  } else {
+    preview.textContent = '';
+  }
 }
 
 function setupPurchasePreview() {
@@ -1521,6 +1577,11 @@ async function addPurchase() {
   document.getElementById('purchaseRate').value = '';
   document.getElementById('purchaseItem').value = '';
   document.getElementById('avgPreview').textContent = 'Rate aur quantity likho — average calculate hogi';
+  document.getElementById('purchasePetCalc').style.display = 'none';
+  document.getElementById('purchasePetBottles').value = '';
+  document.getElementById('purchasePetCount').value = '';
+  document.getElementById('purchasePetCost').value = '';
+  document.getElementById('purchasePetPreview').textContent = '';
 }
 
 async function renderTodayPurchases() {
