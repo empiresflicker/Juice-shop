@@ -748,13 +748,25 @@
   <div class="tab-pills">
     <button class="tab-pill active" onclick="switchReportTab('today')">Aaj</button>
     <button class="tab-pill" onclick="switchReportTab('date')">Date</button>
-    <button class="tab-pill" onclick="switchReportTab('week')">Hafta</button>
+    <button class="tab-pill" onclick="switchReportTab('range')">Range</button>
     <button class="tab-pill" onclick="switchReportTab('month')">Mahina</button>
   </div>
 
-  <!-- Date picker - sirf date tab mein -->
   <div id="datePicker" style="display:none; margin-bottom:12px;">
     <input type="date" class="form-input" id="reportDate" onchange="updateReport()">
+  </div>
+
+  <div id="dateRangePicker" style="display:none; margin-bottom:12px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div>
+        <label class="form-label">Shuru</label>
+        <input type="date" class="form-input" id="reportDateFrom" onchange="updateReport()">
+      </div>
+      <div>
+        <label class="form-label">Khatam</label>
+        <input type="date" class="form-input" id="reportDateTo" onchange="updateReport()">
+      </div>
+    </div>
   </div>
 
   <div class="tab-pills" style="margin-bottom:12px;">
@@ -765,7 +777,10 @@
 
   <div id="reportSection-summary">
     <div class="card">
-      <div class="card-title" id="reportPeriodTitle">Aaj Ka Hisaab</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div class="card-title" id="reportPeriodTitle" style="margin-bottom:0">Aaj Ka Hisaab</div>
+        <button onclick="downloadReportPDF()" class="btn btn-ghost btn-sm">📄 PDF</button>
+      </div>
       <div id="reportSummary"></div>
     </div>
     <div class="card">
@@ -776,7 +791,10 @@
 
   <div id="reportSection-sales" style="display:none">
     <div class="card">
-      <div class="card-title">Sari Sales</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div class="card-title" style="margin-bottom:0">Sari Sales</div>
+        <button onclick="downloadReportPDF()" class="btn btn-ghost btn-sm">📄 PDF</button>
+      </div>
       <div id="reportSalesList"></div>
     </div>
   </div>
@@ -830,24 +848,27 @@
       <label class="form-label">Category</label>
       <select class="form-input" id="itemCategory" onchange="onCategoryChange(this.value)">
         <option value="ingredient">🧪 Ingredient (juice mein use hota hai)</option>
-        <option value="drink">🥤 Drink (seedha sell hoti hai — Coke, Sprite etc)</option>
+        <option value="drink">🥤 Drink — Single Bottle</option>
+        <option value="pet">📦 Pet (e.g. Coke 1.5L — 6 bottles per pet)</option>
+        <option value="mt">🧴 MT/Carton (e.g. Mineral water — 24 per MT)</option>
       </select>
     </div>
 
-    <!-- Pet/Carton calculator - sirf drink ke liye -->
+    <!-- Pet/MT calculator -->
     <div id="petCalcFields" style="display:none; background:var(--bg); border-radius:10px; padding:12px; margin-bottom:14px;">
-      <div style="font-size:12px; font-weight:700; color:var(--orange); margin-bottom:10px;">📦 Pet / Carton Calculator</div>
+      <div style="font-size:12px; font-weight:700; color:var(--orange); margin-bottom:10px;" id="petCalcTitle">📦 Pet/MT Calculator</div>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
         <div>
-          <label class="form-label">Pet mein bottles</label>
+          <label class="form-label">Ek Pet/MT mein bottles</label>
           <input type="number" class="form-input" id="petBottles" placeholder="e.g. 6" min="1" oninput="calcPetRate()">
         </div>
         <div>
-          <label class="form-label">Pet ki cost (Rs)</label>
+          <label class="form-label">Pet/MT ki total cost (Rs)</label>
           <input type="number" class="form-input" id="petCost" placeholder="e.g. 750" min="0" oninput="calcPetRate()">
         </div>
       </div>
-      <div id="petRatePreview" style="font-size:13px; color:var(--green); font-weight:600;"></div>
+      <div id="petRatePreview" style="font-size:13px; color:var(--green); font-weight:600; padding:8px; background:white; border-radius:8px; min-height:30px;"></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Unit "pcs" rakho — quantity mein bottles ki tadaad likhein</div>
     </div>
     <div class="form-group">
       <label class="form-label">Unit</label>
@@ -1246,7 +1267,11 @@ function filterStockCat(cat) {
 function renderStock() {
   let items = Object.values(stockItems);
   if (stockFilter) items = items.filter(i => i.name.toLowerCase().includes(stockFilter));
-  if (stockCatFilter !== 'all') items = items.filter(i => (i.category || 'ingredient') === stockCatFilter);
+  if (stockCatFilter !== 'all') items = items.filter(i => {
+    const cat = i.category || 'ingredient';
+    if (stockCatFilter === 'drink') return cat === 'drink' || cat === 'pet' || cat === 'mt';
+    return cat === stockCatFilter;
+  });
 
   const container = document.getElementById('stockList');
   if (items.length === 0) {
@@ -1275,7 +1300,9 @@ function renderStock() {
     const pct = minAlert > 0 ? Math.min(100, (qty/minAlert)*50) : 70;
     const color = qty <= 0 ? '#d93025' : (minAlert > 0 && qty <= minAlert) ? '#f5a623' : '#2da866';
     const qtyClass = qty <= 0 ? 'red' : (minAlert > 0 && qty <= minAlert) ? 'medium' : '';
-    const catBadge = item.category === 'drink' ? '<span class="badge badge-blue" style="font-size:10px;">🥤 Drink</span>' : '';
+    const catBadge = item.category === 'drink' ? '<span class="badge badge-blue" style="font-size:10px;">🥤 Drink</span>' 
+      : item.category === 'pet' ? '<span class="badge badge-blue" style="font-size:10px;">📦 Pet</span>'
+      : item.category === 'mt' ? '<span class="badge badge-blue" style="font-size:10px;">🧴 MT</span>' : '';
     const itemCost = qty * (item.avgRate || item.rate || 0);
     return `<div class="list-item">
       <div style="flex:1">
@@ -1377,7 +1404,14 @@ function renderPurchaseDropdown() {
 }
 
 function onCategoryChange(val) {
-  document.getElementById('petCalcFields').style.display = val === 'drink' ? 'block' : 'none';
+  const showPet = val === 'pet' || val === 'mt';
+  document.getElementById('petCalcFields').style.display = showPet ? 'block' : 'none';
+  if (val === 'pet') document.getElementById('petCalcTitle').textContent = '📦 Pet Calculator';
+  if (val === 'mt') document.getElementById('petCalcTitle').textContent = '🧴 MT/Carton Calculator';
+  // Auto-set unit to pcs for drinks
+  if (val === 'drink' || val === 'pet' || val === 'mt') {
+    document.getElementById('itemUnit').value = 'pcs';
+  }
 }
 
 function calcPetRate() {
@@ -1879,6 +1913,13 @@ function openSale(recipeId) {
       <div class="profit-row"><span>Faida</span><span class="amount green" id="saleProfitTotal">Rs 0</span></div>
     </div>
     <div id="saleStockCheck" style="margin:10px 0; font-size:13px;"></div>
+    <div class="form-group" style="margin-top:10px;">
+      <label class="form-label" style="font-size:11px;">Sale Ki Date/Time (default: abhi)</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <input type="date" class="form-input" id="saleDateInput" style="font-size:13px;padding:10px;">
+        <input type="time" class="form-input" id="saleTimeInput" style="font-size:13px;padding:10px;">
+      </div>
+    </div>
     <button class="btn btn-orange btn-full mt-12" onclick="confirmSale()">✓ Sale Confirm Karo</button>
     <div style="font-size:11px; color:var(--text-muted); text-align:center; margin-top:8px">Stock automatically deduct hoga</div>
   `;
@@ -2006,6 +2047,16 @@ async function confirmSale() {
     batch.update(ref, { qty: firebase.firestore.FieldValue.increment(-deduct) });
   }
 
+  const dateVal = document.getElementById('saleDateInput')?.value;
+  const timeVal = document.getElementById('saleTimeInput')?.value;
+  let saleTimestamp = firebase.firestore.FieldValue.serverTimestamp();
+  if (dateVal) {
+    const [h, m] = (timeVal || '00:00').split(':');
+    const d = new Date(dateVal);
+    d.setHours(parseInt(h)||0, parseInt(m)||0, 0, 0);
+    saleTimestamp = firebase.firestore.Timestamp.fromDate(d);
+  }
+
   const saleRef = db.collection('juiceShop_sales').doc();
   batch.set(saleRef, {
     recipeId: currentSaleRecipe.id,
@@ -2017,7 +2068,7 @@ async function confirmSale() {
     costTotal: cost * qty,
     profit: (sellPrice - cost) * qty,
     ingredients: currentSaleIngredients,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    timestamp: saleTimestamp
   });
 
   await batch.commit();
@@ -2030,13 +2081,19 @@ let currentReportSection = 'summary';
 
 function switchReportTab(tab) {
   currentReportTab = tab;
-  const tabs = ['today','date','week','month'];
+  const tabs = ['today','date','range','month'];
   document.querySelectorAll('#page-reports .tab-pills:first-child .tab-pill').forEach((btn, i) => {
     btn.classList.toggle('active', tabs[i] === tab);
   });
   document.getElementById('datePicker').style.display = tab === 'date' ? 'block' : 'none';
+  document.getElementById('dateRangePicker').style.display = tab === 'range' ? 'block' : 'none';
   if (tab === 'date' && !document.getElementById('reportDate').value) {
     document.getElementById('reportDate').value = new Date().toISOString().split('T')[0];
+  }
+  if (tab === 'range') {
+    const today = new Date().toISOString().split('T')[0];
+    if (!document.getElementById('reportDateFrom').value) document.getElementById('reportDateFrom').value = today;
+    if (!document.getElementById('reportDateTo').value) document.getElementById('reportDateTo').value = today;
   }
   updateReport();
 }
@@ -2064,12 +2121,66 @@ function getReportDateRange() {
     startDate = val ? new Date(val) : new Date(now);
     startDate.setHours(0,0,0,0);
     endDate = new Date(startDate); endDate.setHours(23,59,59,999);
-  } else if (currentReportTab === 'week') {
-    startDate = new Date(now); startDate.setDate(now.getDate() - 7); startDate.setHours(0,0,0,0);
+  } else if (currentReportTab === 'range') {
+    const from = document.getElementById('reportDateFrom').value;
+    const to = document.getElementById('reportDateTo').value;
+    startDate = from ? new Date(from) : new Date(now); startDate.setHours(0,0,0,0);
+    endDate = to ? new Date(to) : new Date(now); endDate.setHours(23,59,59,999);
   } else {
     startDate = new Date(now); startDate.setDate(1); startDate.setHours(0,0,0,0);
   }
   return { startDate, endDate };
+}
+
+function downloadReportPDF() {
+  const { startDate, endDate } = getReportDateRange();
+  const filtered = allSales.filter(s => {
+    const t = s.timestamp?.toDate?.() || new Date(0);
+    return t >= startDate && t <= endDate;
+  });
+
+  let totalSale = 0, totalCost = 0, totalProfit = 0, totalGlasses = 0;
+  const itemMap = {};
+  filtered.forEach(s => {
+    totalSale += s.sellTotal || 0; totalCost += s.costTotal || 0;
+    totalProfit += s.profit || 0; totalGlasses += s.qty || 0;
+    if (!itemMap[s.recipeName]) itemMap[s.recipeName] = { glasses: 0, sale: 0, profit: 0 };
+    itemMap[s.recipeName].glasses += s.qty || 0;
+    itemMap[s.recipeName].sale += s.sellTotal || 0;
+    itemMap[s.recipeName].profit += s.profit || 0;
+  });
+
+  const fmt = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  const itemRows = Object.entries(itemMap).sort((a,b)=>b[1].sale-a[1].sale)
+    .map(([name,d]) => `<tr><td>${name}</td><td>${d.glasses}</td><td>Rs ${Math.round(d.sale).toLocaleString()}</td><td>Rs ${Math.round(d.profit).toLocaleString()}</td></tr>`).join('');
+  const salesRows = filtered.map(s => {
+    const t = s.timestamp?.toDate?.() || new Date();
+    return `<tr><td>${fmt(t)} ${t.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'})}</td><td>${s.recipeName}</td><td>${s.qty}</td><td>Rs ${s.sellPrice}</td><td>Rs ${Math.round(s.sellTotal||0)}</td><td>${s.soldBy||'—'}</td></tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Juice Shop Report</title>
+  <style>body{font-family:Arial,sans-serif;padding:20px;font-size:13px;}h1{color:#1a7a4a;}h2{color:#1a7a4a;margin-top:20px;}table{width:100%;border-collapse:collapse;margin-top:8px;}th{background:#1a7a4a;color:white;padding:8px;text-align:left;}td{padding:7px 8px;border-bottom:1px solid #ddd;}.summary{background:#f0f9f4;padding:12px;border-radius:8px;margin:10px 0;}.row{display:flex;justify-content:space-between;padding:4px 0;}.green{color:#1a7a4a;font-weight:700;}.red{color:#d93025;}</style></head><body>
+  <h1>🍹 Juice Shop — Report</h1>
+  <p>Period: <strong>${fmt(startDate)}</strong> — <strong>${fmt(endDate)}</strong></p>
+  <div class="summary">
+    <div class="row"><span>Total Sale</span><span class="green">Rs ${Math.round(totalSale).toLocaleString()}</span></div>
+    <div class="row"><span>Total Cost</span><span class="red">Rs ${Math.round(totalCost).toLocaleString()}</span></div>
+    <div class="row"><span>Total Faida</span><span class="green">Rs ${Math.round(totalProfit).toLocaleString()}</span></div>
+    <div class="row"><span>Glasses/Bottles</span><span>${totalGlasses}</span></div>
+    <div class="row"><span>Margin</span><span>${totalSale>0?Math.round((totalProfit/totalSale)*100):0}%</span></div>
+  </div>
+  <h2>Item-wise Sale</h2>
+  <table><tr><th>Item</th><th>Qty</th><th>Sale</th><th>Faida</th></tr>${itemRows}</table>
+  <h2>Sari Sales</h2>
+  <table><tr><th>Date/Time</th><th>Item</th><th>Qty</th><th>Price</th><th>Total</th><th>By</th></tr>${salesRows}</table>
+  </body></html>`;
+
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `juice-report-${fmt(startDate).replace(/\//g,'-')}.html`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('Report download ho rahi hai ✓');
 }
 
 function updateReport() {
@@ -2082,7 +2193,7 @@ function updateReport() {
   });
 
   // Period title
-  const titles = { today: 'Aaj Ka Hisaab', date: 'Date Ka Hisaab', week: 'Is Hafte Ka Hisaab', month: 'Is Mahine Ka Hisaab' };
+  const titles = { today: 'Aaj Ka Hisaab', date: 'Date Ka Hisaab', range: 'Date Range Ka Hisaab', month: 'Is Mahine Ka Hisaab' };
   const titleEl = document.getElementById('reportPeriodTitle');
   if (titleEl) titleEl.textContent = titles[currentReportTab] || 'Hisaab';
 
@@ -2301,28 +2412,32 @@ function openSaleEdit(saleId) {
   const s = allSales.find(x => x.id === saleId) || sales.find(x => x.id === saleId);
   if (!s) return;
   const t = s.timestamp?.toDate?.() || new Date();
-  const timeStr = t.toLocaleTimeString('ur-PK', {hour:'2-digit', minute:'2-digit'});
-  const dateStr = t.toLocaleDateString('ur-PK', {day:'2-digit', month:'short', year:'numeric'});
+  const dateVal = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  const timeVal = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
 
   document.getElementById('saleEditBody').innerHTML = `
     <div class="card" style="background:var(--bg);box-shadow:none;">
       <div class="profit-row"><span>Item</span><span><strong>${s.recipeName}</strong></span></div>
-      <div class="profit-row"><span>Quantity</span><span>${s.qty} glass</span></div>
-      <div class="profit-row"><span>Price</span><span>Rs ${s.sellPrice}</span></div>
-      <div class="profit-row"><span>Total</span><span class="amount green">Rs ${Math.round(s.sellTotal||0)}</span></div>
-      <div class="profit-row"><span>Time</span><span>${dateStr} ${timeStr}</span></div>
-      ${s.soldBy ? `<div class="profit-row"><span>Sold By</span><span>${s.soldBy}</span></div>` : ''}
+      <div class="profit-row"><span>Sold By</span><span>${s.soldBy||'—'}</span></div>
     </div>
     <div class="form-group mt-12">
-      <label class="form-label">Quantity Change Karo</label>
+      <label class="form-label">Quantity</label>
       <input type="number" class="form-input" id="editSaleQty" value="${s.qty}" min="1">
     </div>
     <div class="form-group">
-      <label class="form-label">Price Change Karo (Rs)</label>
+      <label class="form-label">Price (Rs)</label>
       <input type="number" class="form-input" id="editSalePrice" value="${s.sellPrice}" min="0">
     </div>
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input type="date" class="form-input" id="editSaleDate" value="${dateVal}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Time</label>
+      <input type="time" class="form-input" id="editSaleTime" value="${timeVal}">
+    </div>
     <button class="btn btn-primary btn-full" onclick="saveSaleEdit('${saleId}')">✓ Update Karo</button>
-    <button class="btn btn-red btn-full mt-8" onclick="deleteSale('${saleId}')">🗑 Is Sale Ko Delete Karo</button>
+    <button class="btn btn-red btn-full mt-8" onclick="deleteSale('${saleId}')">🗑 Delete Karo</button>
     <div style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:8px">Delete karne par stock wapas nahi aayega</div>
   `;
   openModal('saleEditModal');
@@ -2331,18 +2446,28 @@ function openSaleEdit(saleId) {
 async function saveSaleEdit(saleId) {
   const newQty = parseInt(document.getElementById('editSaleQty').value) || 1;
   const newPrice = parseFloat(document.getElementById('editSalePrice').value) || 0;
+  const dateVal = document.getElementById('editSaleDate').value;
+  const timeVal = document.getElementById('editSaleTime').value;
   const s = allSales.find(x => x.id === saleId);
   if (!s) return;
 
   const recipe = Object.values(recipes).find(r => r.id === s.recipeId);
   const cost = recipe ? calculateRecipeCost(recipe.ingredients || []) : (s.costPerGlass || 0);
 
+  let newTimestamp = s.timestamp;
+  if (dateVal && timeVal) {
+    const [h, m] = timeVal.split(':');
+    const d = new Date(dateVal);
+    d.setHours(parseInt(h), parseInt(m), 0, 0);
+    newTimestamp = firebase.firestore.Timestamp.fromDate(d);
+  }
+
   await db.collection('juiceShop_sales').doc(saleId).update({
-    qty: newQty,
-    sellPrice: newPrice,
+    qty: newQty, sellPrice: newPrice,
     sellTotal: newPrice * newQty,
     costTotal: cost * newQty,
     profit: (newPrice - cost) * newQty,
+    timestamp: newTimestamp,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   closeModal('saleEditModal');
