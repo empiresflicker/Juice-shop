@@ -503,11 +503,14 @@
     color: var(--text-muted);
     cursor: pointer;
     text-align: center;
-    transition: all 0.15s;
+    transition: all 0.1s;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
   }
   .cat-bar-btn .cat-icon { font-size: 18px; }
   .cat-bar-btn.active {
@@ -631,7 +634,7 @@
       <div class="stat-value orange" id="todayProfit">Rs 0</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Glasses Biky</div>
+      <div class="stat-label">Aaj Ki Sales</div>
       <div class="stat-value blue" id="todayGlasses">0</div>
     </div>
     <div class="stat-card">
@@ -1313,20 +1316,39 @@ function showPage(name, btn) {
 
 // ==================== DASHBOARD ====================
 function updateDashboard() {
-  let totalSale = 0, totalCost = 0, totalGlasses = 0;
+  let totalSale = 0, totalCost = 0;
+  let juiceGlasses = 0, drinkBottles = 0, snackPcs = 0;
+
   sales.forEach(s => {
     totalSale += s.sellTotal || 0;
     totalCost += s.costTotal || 0;
-    totalGlasses += s.qty || 0;
+    const recipe = Object.values(recipes).find(r => r.id === s.recipeId);
+    const cat = recipe?.category || 'juice';
+    if (cat === 'drink') drinkBottles += s.qty || 0;
+    else if (cat === 'snack') snackPcs += s.qty || 0;
+    else juiceGlasses += s.qty || 0;
   });
+
+  const totalItems = juiceGlasses + drinkBottles + snackPcs;
   const profit = totalSale - totalCost;
   const margin = totalSale > 0 ? Math.round((profit/totalSale)*100) : 0;
 
+  // Build label
+  const parts = [];
+  if (juiceGlasses > 0) parts.push(`${juiceGlasses} glass`);
+  if (drinkBottles > 0) parts.push(`${drinkBottles} bottle`);
+  if (snackPcs > 0) parts.push(`${snackPcs} pcs`);
+  const itemsLabel = parts.join(' + ') || '0';
+
   document.getElementById('todaySale').textContent = 'Rs ' + Math.round(totalSale).toLocaleString();
   document.getElementById('todayProfit').textContent = 'Rs ' + Math.round(profit).toLocaleString();
-  document.getElementById('todayGlasses').textContent = totalGlasses;
+  document.getElementById('todayGlasses').textContent = itemsLabel;
+  document.getElementById('todayGlasses').style.fontSize = parts.length > 1 ? '14px' : '22px';
   document.getElementById('todayMargin').textContent = margin + '%';
   document.getElementById('todayMargin').className = 'stat-value ' + (margin >= 30 ? '' : margin >= 15 ? 'orange' : 'red');
+
+  // Update label
+  document.querySelector('[data-label="glasses"]') && (document.querySelector('[data-label="glasses"]').textContent = 'Aaj Ki Sales');
 
   // Today sales list
   const list = document.getElementById('todaySalesList');
@@ -1414,13 +1436,16 @@ function renderStock() {
   const allItems = Object.values(stockItems);
   const ingTotal = allItems.filter(i => (i.category||'ingredient') === 'ingredient')
     .reduce((sum, i) => sum + ((i.qty||0) * (i.avgRate||i.rate||0)), 0);
-  const drinkTotal = allItems.filter(i => i.category === 'drink')
+  const drinkTotal = allItems.filter(i => ['drink','pet','mt'].includes(i.category))
     .reduce((sum, i) => sum + ((i.qty||0) * (i.avgRate||i.rate||0)), 0);
-  const grandTotal = ingTotal + drinkTotal;
+  const snackTotal = allItems.filter(i => i.category === 'snack')
+    .reduce((sum, i) => sum + ((i.qty||0) * (i.avgRate||i.rate||0)), 0);
+  const grandTotal = ingTotal + drinkTotal + snackTotal;
 
   const totalBar = `<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid var(--border);">
-    ${stockCatFilter !== 'drink' ? `<div class="profit-row"><span>🧪 Ingredients Total</span><span class="amount" style="color:var(--blue)">Rs ${Math.round(ingTotal).toLocaleString()}</span></div>` : ''}
-    ${stockCatFilter !== 'ingredient' ? `<div class="profit-row"><span>🥤 Drinks Total</span><span class="amount" style="color:var(--orange)">Rs ${Math.round(drinkTotal).toLocaleString()}</span></div>` : ''}
+    ${stockCatFilter === 'all' || stockCatFilter === 'ingredient' ? `<div class="profit-row"><span>🧪 Ingredients Total</span><span class="amount" style="color:var(--blue)">Rs ${Math.round(ingTotal).toLocaleString()}</span></div>` : ''}
+    ${stockCatFilter === 'all' || stockCatFilter === 'drink' ? `<div class="profit-row"><span>🥤 Drinks Total</span><span class="amount" style="color:var(--orange)">Rs ${Math.round(drinkTotal).toLocaleString()}</span></div>` : ''}
+    ${stockCatFilter === 'all' || stockCatFilter === 'snack' ? `<div class="profit-row"><span>🍪 Snacks Total</span><span class="amount" style="color:#7c3aed">Rs ${Math.round(snackTotal).toLocaleString()}</span></div>` : ''}
     <div class="profit-row"><span><strong>📦 Sab Ka Total</strong></span><span class="amount green"><strong>Rs ${Math.round(grandTotal).toLocaleString()}</strong></span></div>
   </div>`;
 
