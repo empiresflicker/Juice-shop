@@ -481,24 +481,24 @@
 
   /* Bottom Category Bar */
   .cat-bar {
-    position: sticky;
-    bottom: 0;
+    position: fixed;
+    bottom: 65px;
     left: 0; right: 0;
     background: white;
     border-top: 1px solid var(--border);
     display: flex;
-    padding: 8px 12px 12px;
-    gap: 8px;
-    z-index: 50;
+    padding: 6px 10px 6px;
+    gap: 6px;
+    z-index: 98;
     box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
   }
   .cat-bar-btn {
     flex: 1;
-    padding: 12px 6px;
+    padding: 10px 4px;
     border: 2px solid var(--border);
-    border-radius: 12px;
+    border-radius: 10px;
     background: white;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--text-muted);
     cursor: pointer;
@@ -507,9 +507,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
   }
-  .cat-bar-btn .cat-icon { font-size: 20px; }
+  .cat-bar-btn .cat-icon { font-size: 18px; }
   .cat-bar-btn.active {
     border-color: var(--green);
     background: #f0f9f4;
@@ -664,7 +664,7 @@
 </div>
 
 <!-- SALE -->
-<div id="page-sale" class="page" style="padding-bottom:80px;">
+<div id="page-sale" class="page" style="padding-bottom:140px;">
   <div class="section-header">
     <div class="section-title">Sale Karo</div>
   </div>
@@ -700,7 +700,7 @@
     <button class="tab-pill" onclick="switchStockTab('purchase')">Khareedari</button>
   </div>
 
-  <div id="stockTab-current" style="padding-bottom:80px;">
+  <div id="stockTab-current" style="padding-bottom:140px;">
     <div class="section-header">
       <div class="section-title">Stock Items</div>
       <button class="btn btn-primary btn-sm" onclick="openModal('addItemModal')">+ Item</button>
@@ -814,7 +814,7 @@
 </div>
 
 <!-- RECIPES -->
-<div id="page-recipe" class="page" style="padding-bottom:80px;">
+<div id="page-recipe" class="page" style="padding-bottom:140px;">
   <div class="section-header">
     <div class="section-title">Recipes</div>
     <button class="btn btn-primary btn-sm" onclick="openModal('addRecipeModal')">+ Recipe</button>
