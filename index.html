@@ -667,9 +667,16 @@
 </div>
 
 <!-- SALE -->
-<div id="page-sale" class="page" style="padding-bottom:140px;">
+<div id="page-sale" class="page">
   <div class="section-header">
     <div class="section-title">Sale Karo</div>
+  </div>
+
+  <div class="tab-pills" style="margin-bottom:10px;">
+    <button class="tab-pill active" onclick="filterSaleCat('all', this)">Sab</button>
+    <button class="tab-pill" onclick="filterSaleCat('juice', this)">🧃 Juices</button>
+    <button class="tab-pill" onclick="filterSaleCat('drink', this)">🥤 Drinks</button>
+    <button class="tab-pill" onclick="filterSaleCat('snack', this)">🍪 Snacks</button>
   </div>
 
   <div class="search-box">
@@ -678,22 +685,6 @@
   </div>
 
   <div class="juice-grid" id="juiceGrid"></div>
-
-  <!-- Bottom Category Bar -->
-  <div class="cat-bar" id="saleCatBar">
-    <button class="cat-bar-btn active" onclick="filterSaleCat('all', this)">
-      <span class="cat-icon">🔍</span>Sab
-    </button>
-    <button class="cat-bar-btn" onclick="filterSaleCat('juice', this)">
-      <span class="cat-icon">🧃</span>Juices
-    </button>
-    <button class="cat-bar-btn" onclick="filterSaleCat('drink', this)">
-      <span class="cat-icon">🥤</span>Drinks
-    </button>
-    <button class="cat-bar-btn" onclick="filterSaleCat('snack', this)">
-      <span class="cat-icon">🍪</span>Snacks
-    </button>
-  </div>
 </div>
 
 <!-- STOCK -->
@@ -703,10 +694,17 @@
     <button class="tab-pill" onclick="switchStockTab('purchase')">Khareedari</button>
   </div>
 
-  <div id="stockTab-current" style="padding-bottom:140px;">
+  <div id="stockTab-current">
     <div class="section-header">
       <div class="section-title">Stock Items</div>
       <button class="btn btn-primary btn-sm" onclick="openModal('addItemModal')">+ Item</button>
+    </div>
+
+    <div class="tab-pills" style="margin-bottom:10px;">
+      <button class="tab-pill active" onclick="filterStockCat('all', this)">Sab</button>
+      <button class="tab-pill" onclick="filterStockCat('ingredient', this)">🧪 Ingredients</button>
+      <button class="tab-pill" onclick="filterStockCat('drink', this)">🥤 Drinks</button>
+      <button class="tab-pill" onclick="filterStockCat('snack', this)">🍪 Snacks</button>
     </div>
 
     <div class="search-box">
@@ -714,28 +712,7 @@
       <input type="text" placeholder="Item dhoondo..." oninput="filterStock(this.value)">
     </div>
     <div class="card">
-      <div id="stockList">
-        <div class="empty-state">
-          <div class="empty-state-icon">📦</div>
-          <div class="empty-state-text">Koi item nahi — upar + se add karo</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Bottom Category Bar -->
-    <div class="cat-bar">
-      <button class="cat-bar-btn active" onclick="filterStockCat('all', this)">
-        <span class="cat-icon">🔍</span>Sab
-      </button>
-      <button class="cat-bar-btn" onclick="filterStockCat('ingredient', this)">
-        <span class="cat-icon">🧪</span>Ingredients
-      </button>
-      <button class="cat-bar-btn" onclick="filterStockCat('drink', this)">
-        <span class="cat-icon">🥤</span>Drinks
-      </button>
-      <button class="cat-bar-btn" onclick="filterStockCat('snack', this)">
-        <span class="cat-icon">🍪</span>Snacks
-      </button>
+      <div id="stockList"></div>
     </div>
   </div>
 
@@ -817,28 +794,18 @@
 </div>
 
 <!-- RECIPES -->
-<div id="page-recipe" class="page" style="padding-bottom:140px;">
+<div id="page-recipe" class="page">
   <div class="section-header">
     <div class="section-title">Recipes</div>
     <button class="btn btn-primary btn-sm" onclick="openModal('addRecipeModal')">+ Recipe</button>
   </div>
-  <div id="recipeList"></div>
-
-  <!-- Bottom Category Bar -->
-  <div class="cat-bar">
-    <button class="cat-bar-btn active" onclick="filterRecipeCat('all', this)">
-      <span class="cat-icon">🔍</span>Sab
-    </button>
-    <button class="cat-bar-btn" onclick="filterRecipeCat('juice', this)">
-      <span class="cat-icon">🧃</span>Juices
-    </button>
-    <button class="cat-bar-btn" onclick="filterRecipeCat('drink', this)">
-      <span class="cat-icon">🥤</span>Drinks
-    </button>
-    <button class="cat-bar-btn" onclick="filterRecipeCat('snack', this)">
-      <span class="cat-icon">🍪</span>Snacks
-    </button>
+  <div class="tab-pills" style="margin-bottom:10px;">
+    <button class="tab-pill active" onclick="filterRecipeCat('all', this)">Sab</button>
+    <button class="tab-pill" onclick="filterRecipeCat('juice', this)">🧃 Juices</button>
+    <button class="tab-pill" onclick="filterRecipeCat('drink', this)">🥤 Drinks</button>
+    <button class="tab-pill" onclick="filterRecipeCat('snack', this)">🍪 Snacks</button>
   </div>
+  <div id="recipeList"></div>
 </div>
 
 <!-- REPORTS -->
@@ -1408,7 +1375,7 @@ function filterStock(val) {
 function filterStockCat(cat, btn) {
   stockCatFilter = cat;
   if (btn) {
-    document.querySelectorAll('#stockTab-current .cat-bar .cat-bar-btn').forEach(b => b.classList.remove('active'));
+    btn.closest('.tab-pills').querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
   renderStock();
@@ -1980,7 +1947,7 @@ let recipeCatFilter = 'all';
 function filterRecipeCat(cat, btn) {
   recipeCatFilter = cat;
   if (btn) {
-    document.querySelectorAll('#page-recipe .cat-bar .cat-bar-btn').forEach(b => b.classList.remove('active'));
+    btn.closest('.tab-pills').querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
   renderRecipes();
@@ -2031,7 +1998,7 @@ let saleCatFilter = 'all';
 function filterSaleCat(cat, btn) {
   saleCatFilter = cat;
   if (btn) {
-    document.querySelectorAll('#page-sale .cat-bar .cat-bar-btn').forEach(b => b.classList.remove('active'));
+    btn.closest('.tab-pills').querySelectorAll('.tab-pill').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }
   renderJuiceGrid();
