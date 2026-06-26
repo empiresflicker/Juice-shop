@@ -626,17 +626,19 @@
     <div class="section-title">Sale Karo</div>
   </div>
 
-  <div class="search-box">
-    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    <input type="text" id="juiceSearch" placeholder="Juice ka naam likho..." oninput="filterJuices(this.value)">
+  <div class="tab-pills" style="margin-bottom:10px;">
+    <button class="tab-pill active" id="saleCatAll" onclick="filterSaleCat('all')">Sab</button>
+    <button class="tab-pill" id="saleCatJuice" onclick="filterSaleCat('juice')">🧃 Juices</button>
+    <button class="tab-pill" id="saleCatDrink" onclick="filterSaleCat('drink')">🥤 Drinks</button>
+    <button class="tab-pill" id="saleCatSnack" onclick="filterSaleCat('snack')">🍪 Snacks</button>
   </div>
 
-  <div class="juice-grid" id="juiceGrid">
-    <div class="empty-state" style="grid-column:1/-1">
-      <div class="empty-state-icon">📋</div>
-      <div class="empty-state-text">Pehle Recipe mein juices add karo</div>
-    </div>
+  <div class="search-box">
+    <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="juiceSearch" placeholder="Naam likho..." oninput="filterJuices(this.value)">
   </div>
+
+  <div class="juice-grid" id="juiceGrid"></div>
 </div>
 
 <!-- STOCK -->
@@ -756,12 +758,13 @@
     <div class="section-title">Recipes</div>
     <button class="btn btn-primary btn-sm" onclick="openModal('addRecipeModal')">+ Recipe</button>
   </div>
-  <div id="recipeList">
-    <div class="empty-state">
-      <div class="empty-state-icon">📖</div>
-      <div class="empty-state-text">Koi recipe nahi — upar + se add karo</div>
-    </div>
+  <div class="tab-pills" style="margin-bottom:10px;">
+    <button class="tab-pill active" onclick="filterRecipeCat('all')">Sab</button>
+    <button class="tab-pill" onclick="filterRecipeCat('juice')">🧃 Juices</button>
+    <button class="tab-pill" onclick="filterRecipeCat('drink')">🥤 Drinks</button>
+    <button class="tab-pill" onclick="filterRecipeCat('snack')">🍪 Snacks</button>
   </div>
+  <div id="recipeList"></div>
 </div>
 
 <!-- REPORTS -->
@@ -968,6 +971,14 @@
         <input type="text" class="form-input" id="recipeName" placeholder="e.g. Mango Shake" style="flex:1">
       </div>
       <input type="hidden" id="recipeIcon" value="🍹">
+      <div class="form-group" style="margin-top:10px;">
+        <label class="form-label">Category</label>
+        <select class="form-input" id="recipeCategory">
+          <option value="juice">🧃 Juice / Shake</option>
+          <option value="drink">🥤 Drink / Bottle</option>
+          <option value="snack">🍪 Snack (Biscuit, Nimko, Paper)</option>
+        </select>
+      </div>
       <!-- Icon Picker -->
       <div id="iconPicker" style="display:none;background:var(--bg);border-radius:10px;padding:10px;margin-top:8px;">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;font-weight:600">Icon chunein:</div>
@@ -1114,16 +1125,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// Offline persistence enable karo
-db.enablePersistence({ synchronizeTabs: true })
-  .catch(err => {
-    if (err.code === 'failed-precondition') {
-      console.log('Offline: multiple tabs open');
-    } else if (err.code === 'unimplemented') {
-      console.log('Offline: browser not supported');
-    }
-  });
-
 // ==================== STATE ====================
 let stockItems = {}; // id -> item
 let recipes = {}; // id -> recipe
@@ -1168,7 +1169,12 @@ function loadData() {
   // Stock
   db.collection('juiceShop_stock').onSnapshot(snap => {
     stockItems = {};
-    snap.forEach(doc => { stockItems[doc.id] = { id: doc.id, ...doc.data() }; });
+    snap.forEach(doc => {
+      stockItems[doc.id] = { id: doc.id, ...doc.data() };
+      // Local mirror update
+      localStockMirror[doc.id] = doc.data().qty || 0;
+    });
+    saveLocalStock();
     renderStock();
     renderPurchaseDropdown();
     renderJuiceGrid();
@@ -1774,6 +1780,7 @@ function setPriceRows(prices) {
 async function saveRecipe() {
   const name = document.getElementById('recipeName').value.trim();
   const icon = document.getElementById('recipeIcon').value || getJuiceIcon(name);
+  const category = document.getElementById('recipeCategory').value || 'juice';
   const prices = getPrices();
   const ingredients = getRecipeIngredients();
   const editId = document.getElementById('editRecipeId').value;
@@ -1785,7 +1792,7 @@ async function saveRecipe() {
   const costPerGlass = calculateRecipeCost(ingredients);
   const sellPrice = prices[0].price;
   const data = {
-    name, icon, prices, sellPrice, ingredients, costPerGlass,
+    name, icon, category, prices, sellPrice, ingredients, costPerGlass,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
@@ -1811,6 +1818,7 @@ function openEditRecipe(id) {
   const icon = recipe.icon || getJuiceIcon(recipe.name);
   document.getElementById('recipeIcon').value = icon;
   document.getElementById('recipeIconBtn').textContent = icon;
+  document.getElementById('recipeCategory').value = recipe.category || 'juice';
   setPriceRows(recipe.prices || [{ label: '', price: recipe.sellPrice || 0 }]);
   document.getElementById('ingredientRows').innerHTML = '';
   (recipe.ingredients || []).forEach(ing => addIngredientRow(ing));
@@ -1831,13 +1839,25 @@ function resetRecipeForm() {
   setPriceRows([]);
 }
 
+let recipeCatFilter = 'all';
+
+function filterRecipeCat(cat) {
+  recipeCatFilter = cat;
+  document.querySelectorAll('#page-recipe .tab-pills .tab-pill').forEach((btn, i) => {
+    btn.classList.toggle('active', ['all','juice','drink','snack'][i] === cat);
+  });
+  renderRecipes();
+}
+
 function renderRecipes() {
   const container = document.getElementById('recipeList');
-  const list = Object.values(recipes).sort((a,b) => a.name.localeCompare(b.name));
+  let list = Object.values(recipes).sort((a,b) => a.name.localeCompare(b.name));
+  if (recipeCatFilter !== 'all') list = list.filter(r => (r.category || 'juice') === recipeCatFilter);
   if (list.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📖</div><div class="empty-state-text">Koi recipe nahi — upar + se add karo</div></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📖</div><div class="empty-state-text">Koi recipe nahi — + se add karo</div></div>';
     return;
   }
+  const catIcons = { juice: '🧃', drink: '🥤', snack: '🍪' };
   container.innerHTML = list.map(r => {
     const cost = calculateRecipeCost(r.ingredients || []);
     const prices = r.prices || [{ label: '', price: r.sellPrice || 0 }];
@@ -1848,10 +1868,11 @@ function renderRecipes() {
       const item = stockItems[ing.itemId];
       return item ? `${ing.qty}${ing.unit} ${item.name}` : '';
     }).filter(Boolean).join(', ');
+    const catBadge = `<span class="badge badge-green" style="font-size:10px;">${catIcons[r.category||'juice']} ${r.category||'juice'}</span>`;
     return `<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
-          <div style="font-size:16px;font-weight:700">${r.name}</div>
+          <div style="font-size:16px;font-weight:700">${r.icon||getJuiceIcon(r.name)} ${r.name} ${catBadge}</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:3px">${ings || 'No ingredients'}</div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="openEditRecipe('${r.id}')">✎</button>
@@ -1859,7 +1880,7 @@ function renderRecipes() {
       <div class="divider"></div>
       <div style="font-size:13px;color:var(--green);font-weight:600;margin-bottom:6px">${priceStr}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center">
-        <div><div style="font-size:11px;color:var(--text-muted)">Cost/Glass</div><div style="font-size:15px;font-weight:700;color:var(--red)">Rs ${cost.toFixed(0)}</div></div>
+        <div><div style="font-size:11px;color:var(--text-muted)">Cost</div><div style="font-size:15px;font-weight:700;color:var(--red)">Rs ${cost.toFixed(0)}</div></div>
         <div><div style="font-size:11px;color:var(--text-muted)">Min Margin</div><div style="font-size:15px;font-weight:700;color:var(--orange)">${margin}%</div></div>
       </div>
     </div>`;
@@ -1868,6 +1889,17 @@ function renderRecipes() {
 
 // ==================== SALE PAGE ====================
 let juiceFilter = '';
+let saleCatFilter = 'all';
+
+function filterSaleCat(cat) {
+  saleCatFilter = cat;
+  ['all','juice','drink','snack'].forEach((c,i) => {
+    const btn = document.getElementById('saleCat' + c.charAt(0).toUpperCase() + c.slice(1));
+    if (btn) btn.classList.toggle('active', c === cat);
+  });
+  renderJuiceGrid();
+}
+
 function filterJuices(val) {
   juiceFilter = val.toLowerCase();
   renderJuiceGrid();
@@ -1906,10 +1938,11 @@ function getJuiceIcon(name) {
 
 function renderJuiceGrid() {
   const container = document.getElementById('juiceGrid');
-  const list = Object.values(recipes).filter(r => !juiceFilter || r.name.toLowerCase().includes(juiceFilter))
-    .sort((a,b) => a.name.localeCompare(b.name));
+  let list = Object.values(recipes).filter(r => !juiceFilter || r.name.toLowerCase().includes(juiceFilter));
+  if (saleCatFilter !== 'all') list = list.filter(r => (r.category || 'juice') === saleCatFilter);
+  list.sort((a,b) => a.name.localeCompare(b.name));
   if (list.length === 0) {
-    container.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">📋</div><div class="empty-state-text">Pehle Recipe mein juices add karo</div></div>';
+    container.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">📋</div><div class="empty-state-text">Koi item nahi — Recipe mein add karo</div></div>';
     return;
   }
   container.innerHTML = list.map(r => {
@@ -2547,10 +2580,37 @@ async function saveSaleEdit(saleId) {
 }
 
 async function deleteSale(saleId) {
-  if (!confirm('Pakka delete karna hai? Yeh wapas nahi aayega.')) return;
-  await db.collection('juiceShop_sales').doc(saleId).delete();
+  if (!confirm('Pakka delete karna hai? Stock wapas aa jaega.')) return;
+  const s = allSales.find(x => x.id === saleId) || sales.find(x => x.id === saleId);
+  if (!s) return;
+
+  const batch = db.batch();
+
+  // Ingredients — sale se lao, nahi hai toh recipe se
+  const recipe = Object.values(recipes).find(r => r.id === s.recipeId);
+  const ings = (s.ingredients && s.ingredients.length > 0)
+    ? s.ingredients
+    : (recipe?.ingredients || []);
+
+  let stockRestored = false;
+  for (const ing of ings) {
+    if (!ing.itemId || !ing.qty) continue;
+    const item = stockItems[ing.itemId];
+    if (!item) continue;
+    let restore = ing.qty * (s.qty || 1);
+    if (item.unit === 'L' && ing.unit === 'ml') restore /= 1000;
+    else if (item.unit === 'Kg' && ing.unit === 'g') restore /= 1000;
+    else if (item.unit === 'Doz' && ing.unit === 'pcs') restore /= 12;
+    batch.update(db.collection('juiceShop_stock').doc(ing.itemId), {
+      qty: firebase.firestore.FieldValue.increment(restore)
+    });
+    stockRestored = true;
+  }
+
+  batch.delete(db.collection('juiceShop_sales').doc(saleId));
+  await batch.commit();
   closeModal('saleEditModal');
-  showToast('Sale delete ho gai ✓');
+  showToast(stockRestored ? 'Sale delete — stock wapas aa gaya ✓' : 'Sale delete ho gai ✓');
 }
 
 // ==================== MODAL ====================
@@ -2593,6 +2653,201 @@ function showToast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
 }
+
+// ==================== OFFLINE QUEUE (IndexedDB) ====================
+let offlineDB = null;
+
+function initOfflineDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('juiceShopOffline', 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('queue')) {
+        db.createObjectStore('queue', { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    req.onsuccess = e => { offlineDB = e.target.result; resolve(); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function addToQueue(action) {
+  return new Promise((resolve, reject) => {
+    const tx = offlineDB.transaction('queue', 'readwrite');
+    const store = tx.objectStore('queue');
+    const req = store.add({ ...action, queuedAt: Date.now() });
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function getAllQueue() {
+  return new Promise((resolve) => {
+    const tx = offlineDB.transaction('queue', 'readonly');
+    const store = tx.objectStore('queue');
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => resolve([]);
+  });
+}
+
+function deleteFromQueue(id) {
+  return new Promise((resolve) => {
+    const tx = offlineDB.transaction('queue', 'readwrite');
+    tx.objectStore('queue').delete(id);
+    tx.oncomplete = resolve;
+  });
+}
+
+// Local stock mirror for offline use
+let localStockMirror = {};
+
+function saveLocalStock() {
+  try {
+    localStorage.setItem('juiceLocalStock', JSON.stringify(localStockMirror));
+  } catch(e) {}
+}
+
+function loadLocalStock() {
+  try {
+    const saved = localStorage.getItem('juiceLocalStock');
+    if (saved) localStockMirror = JSON.parse(saved);
+  } catch(e) {}
+}
+
+function updateLocalStock(itemId, delta) {
+  if (localStockMirror[itemId] !== undefined) {
+    localStockMirror[itemId] += delta;
+    saveLocalStock();
+  }
+}
+
+// Sync queue to Firebase when online
+async function syncOfflineQueue() {
+  if (!navigator.onLine || !offlineDB) return;
+  const queue = await getAllQueue();
+  if (queue.length === 0) return;
+
+  showToast(`${queue.length} offline entries sync ho rahi hain...`);
+  let synced = 0;
+
+  for (const item of queue) {
+    try {
+      if (item.type === 'sale') {
+        await db.collection('juiceShop_sales').add(item.data);
+        // Stock deduct karo
+        for (const ing of (item.data.ingredients || [])) {
+          const stockItem = stockItems[ing.itemId];
+          if (!stockItem || !ing.qty) continue;
+          let deduct = ing.qty * (item.data.qty || 1);
+          if (stockItem.unit === 'L' && ing.unit === 'ml') deduct /= 1000;
+          else if (stockItem.unit === 'Kg' && ing.unit === 'g') deduct /= 1000;
+          else if (stockItem.unit === 'Doz' && ing.unit === 'pcs') deduct /= 12;
+          await db.collection('juiceShop_stock').doc(ing.itemId).update({
+            qty: firebase.firestore.FieldValue.increment(-deduct)
+          });
+        }
+      } else if (item.type === 'purchase') {
+        await db.collection('juiceShop_purchases').add(item.data);
+        await db.collection('juiceShop_stock').doc(item.data.itemId).update({
+          qty: firebase.firestore.FieldValue.increment(item.data.qty),
+          avgRate: item.data.avgRate,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      await deleteFromQueue(item.id);
+      synced++;
+    } catch(e) {
+      console.error('Sync error:', e);
+    }
+  }
+
+  if (synced > 0) showToast(`${synced} entries sync ho gai ✓`);
+}
+
+// Override confirmSale for offline support
+const _originalConfirmSale = confirmSale;
+window.confirmSale = async function() {
+  if (!currentSaleRecipe) return;
+  const qty = currentSaleQty;
+  const sellPrice = currentSalePrice;
+  const cost = calculateRecipeCost(currentSaleIngredients);
+
+  const saleData = {
+    recipeId: currentSaleRecipe.id,
+    recipeName: currentSaleRecipe.name,
+    soldBy: currentUserName || 'Unknown',
+    qty, sellPrice,
+    sellTotal: sellPrice * qty,
+    costPerGlass: cost,
+    costTotal: cost * qty,
+    profit: (sellPrice - cost) * qty,
+    ingredients: currentSaleIngredients,
+    timestamp: firebase.firestore.Timestamp.fromDate((() => {
+      const dateVal = document.getElementById('saleDateInput')?.value;
+      const timeVal = document.getElementById('saleTimeInput')?.value;
+      if (dateVal) {
+        const [h, m] = (timeVal || '00:00').split(':');
+        const d = new Date(dateVal);
+        d.setHours(parseInt(h)||0, parseInt(m)||0, 0, 0);
+        return d;
+      }
+      return new Date();
+    })())
+  };
+
+  if (!navigator.onLine) {
+    // Offline — queue mein save karo
+    await addToQueue({ type: 'sale', data: { ...saleData, timestamp: saleData.timestamp.toDate().toISOString() } });
+    // Local stock update
+    for (const ing of currentSaleIngredients) {
+      let deduct = ing.qty * qty;
+      const item = stockItems[ing.itemId];
+      if (!item) continue;
+      if (item.unit === 'L' && ing.unit === 'ml') deduct /= 1000;
+      else if (item.unit === 'Kg' && ing.unit === 'g') deduct /= 1000;
+      else if (item.unit === 'Doz' && ing.unit === 'pcs') deduct /= 12;
+      updateLocalStock(ing.itemId, -deduct);
+    }
+    // Local sales mein add karo for display
+    sales.unshift({ id: 'offline_' + Date.now(), ...saleData, _offline: true });
+    closeModal('saleModal');
+    updateDashboard();
+    showToast(`${qty} glass ${currentSaleRecipe.name} — offline saved ✓`);
+    return;
+  }
+
+  // Online — original flow
+  const batch = db.batch();
+  for (const ing of currentSaleIngredients) {
+    const item = stockItems[ing.itemId];
+    if (!item || !ing.qty) continue;
+    let deduct = ing.qty * qty;
+    if (item.unit === 'L' && ing.unit === 'ml') deduct /= 1000;
+    else if (item.unit === 'Kg' && ing.unit === 'g') deduct /= 1000;
+    else if (item.unit === 'Doz' && ing.unit === 'pcs') deduct /= 12;
+    batch.update(db.collection('juiceShop_stock').doc(ing.itemId), {
+      qty: firebase.firestore.FieldValue.increment(-deduct)
+    });
+  }
+  const saleRef = db.collection('juiceShop_sales').doc();
+  batch.set(saleRef, saleData);
+  await batch.commit();
+  closeModal('saleModal');
+  showToast(`${qty} glass ${currentSaleRecipe.name} — Rs ${Math.round(sellPrice * qty)} ✓`);
+};
+
+// Init on load
+window.addEventListener('load', async () => {
+  loadLocalStock();
+  await initOfflineDB();
+  // Sync on network restore
+  window.addEventListener('online', () => {
+    syncOfflineQueue();
+  });
+  // Sync on startup if online
+  if (navigator.onLine) setTimeout(syncOfflineQueue, 3000);
+});
 
 // Clear old caches
 caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
