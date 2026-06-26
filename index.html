@@ -479,6 +479,44 @@
   .gap-8 { gap: 8px; }
   .flex-1 { flex: 1; }
 
+  /* Bottom Category Bar */
+  .cat-bar {
+    position: sticky;
+    bottom: 0;
+    left: 0; right: 0;
+    background: white;
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 8px 12px 12px;
+    gap: 8px;
+    z-index: 50;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
+  }
+  .cat-bar-btn {
+    flex: 1;
+    padding: 12px 6px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: white;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+  .cat-bar-btn .cat-icon { font-size: 20px; }
+  .cat-bar-btn.active {
+    border-color: var(--green);
+    background: #f0f9f4;
+    color: var(--green);
+  }
+  .cat-bar-btn:active { transform: scale(0.95); }
+
   /* Lock Screen */
   #lockScreen {
     position: fixed; inset: 0;
@@ -602,6 +640,11 @@
     </div>
   </div>
 
+  <!-- Undo Button -->
+  <button onclick="undoLastSale()" style="width:100%;padding:10px;margin-bottom:12px;background:#fff3cd;border:1.5px solid #ffc107;border-radius:10px;font-size:13px;font-weight:600;color:#856404;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;" id="undoBtn">
+    ↩ Aakhri Sale Undo Karo
+  </button>
+
   <div id="lowStockAlerts"></div>
 
   <div class="card">
@@ -621,16 +664,9 @@
 </div>
 
 <!-- SALE -->
-<div id="page-sale" class="page">
+<div id="page-sale" class="page" style="padding-bottom:80px;">
   <div class="section-header">
     <div class="section-title">Sale Karo</div>
-  </div>
-
-  <div class="tab-pills" style="margin-bottom:10px;">
-    <button class="tab-pill active" id="saleCatAll" onclick="filterSaleCat('all')">Sab</button>
-    <button class="tab-pill" id="saleCatJuice" onclick="filterSaleCat('juice')">🧃 Juices</button>
-    <button class="tab-pill" id="saleCatDrink" onclick="filterSaleCat('drink')">🥤 Drinks</button>
-    <button class="tab-pill" id="saleCatSnack" onclick="filterSaleCat('snack')">🍪 Snacks</button>
   </div>
 
   <div class="search-box">
@@ -639,6 +675,22 @@
   </div>
 
   <div class="juice-grid" id="juiceGrid"></div>
+
+  <!-- Bottom Category Bar -->
+  <div class="cat-bar" id="saleCatBar">
+    <button class="cat-bar-btn active" onclick="filterSaleCat('all', this)">
+      <span class="cat-icon">🔍</span>Sab
+    </button>
+    <button class="cat-bar-btn" onclick="filterSaleCat('juice', this)">
+      <span class="cat-icon">🧃</span>Juices
+    </button>
+    <button class="cat-bar-btn" onclick="filterSaleCat('drink', this)">
+      <span class="cat-icon">🥤</span>Drinks
+    </button>
+    <button class="cat-bar-btn" onclick="filterSaleCat('snack', this)">
+      <span class="cat-icon">🍪</span>Snacks
+    </button>
+  </div>
 </div>
 
 <!-- STOCK -->
@@ -648,17 +700,10 @@
     <button class="tab-pill" onclick="switchStockTab('purchase')">Khareedari</button>
   </div>
 
-  <div id="stockTab-current">
+  <div id="stockTab-current" style="padding-bottom:80px;">
     <div class="section-header">
       <div class="section-title">Stock Items</div>
       <button class="btn btn-primary btn-sm" onclick="openModal('addItemModal')">+ Item</button>
-    </div>
-
-    <!-- Category Filter -->
-    <div class="tab-pills" style="margin-bottom:10px;">
-      <button class="tab-pill active" id="catAll" onclick="filterStockCat('all')">Sab</button>
-      <button class="tab-pill" id="catIngredient" onclick="filterStockCat('ingredient')">🧪 Ingredients</button>
-      <button class="tab-pill" id="catDrink" onclick="filterStockCat('drink')">🥤 Drinks</button>
     </div>
 
     <div class="search-box">
@@ -672,6 +717,22 @@
           <div class="empty-state-text">Koi item nahi — upar + se add karo</div>
         </div>
       </div>
+    </div>
+
+    <!-- Bottom Category Bar -->
+    <div class="cat-bar">
+      <button class="cat-bar-btn active" onclick="filterStockCat('all', this)">
+        <span class="cat-icon">🔍</span>Sab
+      </button>
+      <button class="cat-bar-btn" onclick="filterStockCat('ingredient', this)">
+        <span class="cat-icon">🧪</span>Ingredients
+      </button>
+      <button class="cat-bar-btn" onclick="filterStockCat('drink', this)">
+        <span class="cat-icon">🥤</span>Drinks
+      </button>
+      <button class="cat-bar-btn" onclick="filterStockCat('snack', this)">
+        <span class="cat-icon">🍪</span>Snacks
+      </button>
     </div>
   </div>
 
@@ -753,18 +814,28 @@
 </div>
 
 <!-- RECIPES -->
-<div id="page-recipe" class="page">
+<div id="page-recipe" class="page" style="padding-bottom:80px;">
   <div class="section-header">
     <div class="section-title">Recipes</div>
     <button class="btn btn-primary btn-sm" onclick="openModal('addRecipeModal')">+ Recipe</button>
   </div>
-  <div class="tab-pills" style="margin-bottom:10px;">
-    <button class="tab-pill active" onclick="filterRecipeCat('all')">Sab</button>
-    <button class="tab-pill" onclick="filterRecipeCat('juice')">🧃 Juices</button>
-    <button class="tab-pill" onclick="filterRecipeCat('drink')">🥤 Drinks</button>
-    <button class="tab-pill" onclick="filterRecipeCat('snack')">🍪 Snacks</button>
-  </div>
   <div id="recipeList"></div>
+
+  <!-- Bottom Category Bar -->
+  <div class="cat-bar">
+    <button class="cat-bar-btn active" onclick="filterRecipeCat('all', this)">
+      <span class="cat-icon">🔍</span>Sab
+    </button>
+    <button class="cat-bar-btn" onclick="filterRecipeCat('juice', this)">
+      <span class="cat-icon">🧃</span>Juices
+    </button>
+    <button class="cat-bar-btn" onclick="filterRecipeCat('drink', this)">
+      <span class="cat-icon">🥤</span>Drinks
+    </button>
+    <button class="cat-bar-btn" onclick="filterRecipeCat('snack', this)">
+      <span class="cat-icon">🍪</span>Snacks
+    </button>
+  </div>
 </div>
 
 <!-- REPORTS -->
@@ -875,6 +946,7 @@
         <option value="drink">🥤 Drink — Single Bottle</option>
         <option value="pet">📦 Pet (e.g. Coke 1.5L — 6 bottles per pet)</option>
         <option value="mt">🧴 MT/Carton (e.g. Mineral water — 24 per MT)</option>
+        <option value="snack">🍪 Snack (Biscuit, Nimko, Candy, Paper)</option>
       </select>
     </div>
 
@@ -893,6 +965,23 @@
       </div>
       <div id="petRatePreview" style="font-size:13px; color:var(--green); font-weight:600; padding:8px; background:white; border-radius:8px; min-height:30px;"></div>
       <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Unit "pcs" rakho — quantity mein bottles ki tadaad likhein</div>
+    </div>
+
+    <!-- Snack Packing Calculator -->
+    <div id="snackCalcFields" style="display:none; background:var(--bg); border-radius:10px; padding:12px; margin-bottom:14px;">
+      <div style="font-size:12px; font-weight:700; color:#7c3aed; margin-bottom:10px;">🍪 Packing Calculator</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;">
+        <div>
+          <label class="form-label">Ek packing mein items</label>
+          <input type="number" class="form-input" id="snackPackItems" placeholder="e.g. 12" min="1" oninput="calcSnackRate()">
+        </div>
+        <div>
+          <label class="form-label">Packing ki cost (Rs)</label>
+          <input type="number" class="form-input" id="snackPackCost" placeholder="e.g. 220" min="0" oninput="calcSnackRate()">
+        </div>
+      </div>
+      <div id="snackRatePreview" style="font-size:13px; color:#7c3aed; font-weight:600; padding:8px; background:white; border-radius:8px; min-height:30px;"></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Unit "pcs" rakho — quantity mein total items likhein</div>
     </div>
     <div class="form-group">
       <label class="form-label">Unit</label>
@@ -1294,11 +1383,12 @@ function filterStock(val) {
   renderStock();
 }
 
-function filterStockCat(cat) {
+function filterStockCat(cat, btn) {
   stockCatFilter = cat;
-  document.querySelectorAll('#stockTab-current .tab-pills:nth-child(2) .tab-pill').forEach((btn, i) => {
-    btn.classList.toggle('active', ['all','ingredient','drink'][i] === cat);
-  });
+  if (btn) {
+    document.querySelectorAll('#stockTab-current .cat-bar .cat-bar-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
   renderStock();
 }
 
@@ -1308,7 +1398,9 @@ function renderStock() {
   if (stockCatFilter !== 'all') items = items.filter(i => {
     const cat = i.category || 'ingredient';
     if (stockCatFilter === 'drink') return cat === 'drink' || cat === 'pet' || cat === 'mt';
-    return cat === stockCatFilter;
+    if (stockCatFilter === 'snack') return cat === 'snack';
+    if (stockCatFilter === 'ingredient') return cat === 'ingredient';
+    return true;
   });
 
   const container = document.getElementById('stockList');
@@ -1340,7 +1432,8 @@ function renderStock() {
     const qtyClass = qty <= 0 ? 'red' : (minAlert > 0 && qty <= minAlert) ? 'medium' : '';
     const catBadge = item.category === 'drink' ? '<span class="badge badge-blue" style="font-size:10px;">🥤 Drink</span>' 
       : item.category === 'pet' ? '<span class="badge badge-blue" style="font-size:10px;">📦 Pet</span>'
-      : item.category === 'mt' ? '<span class="badge badge-blue" style="font-size:10px;">🧴 MT</span>' : '';
+      : item.category === 'mt' ? '<span class="badge badge-blue" style="font-size:10px;">🧴 MT</span>'
+      : item.category === 'snack' ? '<span class="badge badge-yellow" style="font-size:10px;">🍪 Snack</span>' : '';
     const itemCost = qty * (item.avgRate || item.rate || 0);
     return `<div class="list-item">
       <div style="flex:1">
@@ -1417,9 +1510,13 @@ function resetItemForm() {
   document.getElementById('editItemId').value = '';
   document.getElementById('saveItemBtn').textContent = 'Item Save Karo';
   document.getElementById('petCalcFields').style.display = 'none';
+  document.getElementById('snackCalcFields').style.display = 'none';
   document.getElementById('petBottles').value = '';
   document.getElementById('petCost').value = '';
   document.getElementById('petRatePreview').textContent = '';
+  if (document.getElementById('snackPackItems')) document.getElementById('snackPackItems').value = '';
+  if (document.getElementById('snackPackCost')) document.getElementById('snackPackCost').value = '';
+  if (document.getElementById('snackRatePreview')) document.getElementById('snackRatePreview').textContent = '';
 }
 
 // ==================== PURCHASE ====================
@@ -1443,12 +1540,26 @@ function renderPurchaseDropdown() {
 
 function onCategoryChange(val) {
   const showPet = val === 'pet' || val === 'mt';
+  const showSnack = val === 'snack';
   document.getElementById('petCalcFields').style.display = showPet ? 'block' : 'none';
+  document.getElementById('snackCalcFields').style.display = showSnack ? 'block' : 'none';
   if (val === 'pet') document.getElementById('petCalcTitle').textContent = '📦 Pet Calculator';
   if (val === 'mt') document.getElementById('petCalcTitle').textContent = '🧴 MT/Carton Calculator';
-  // Auto-set unit to pcs for drinks
-  if (val === 'drink' || val === 'pet' || val === 'mt') {
+  if (val === 'drink' || val === 'pet' || val === 'mt' || val === 'snack') {
     document.getElementById('itemUnit').value = 'pcs';
+  }
+}
+
+function calcSnackRate() {
+  const items = parseFloat(document.getElementById('snackPackItems').value) || 0;
+  const cost = parseFloat(document.getElementById('snackPackCost').value) || 0;
+  const preview = document.getElementById('snackRatePreview');
+  if (items > 0 && cost > 0) {
+    const ratePerItem = cost / items;
+    preview.innerHTML = `Ek item ka rate: <strong>Rs ${ratePerItem.toFixed(2)}</strong>`;
+    document.getElementById('itemRate').value = ratePerItem.toFixed(2);
+  } else {
+    preview.textContent = '';
   }
 }
 
@@ -1841,11 +1952,12 @@ function resetRecipeForm() {
 
 let recipeCatFilter = 'all';
 
-function filterRecipeCat(cat) {
+function filterRecipeCat(cat, btn) {
   recipeCatFilter = cat;
-  document.querySelectorAll('#page-recipe .tab-pills .tab-pill').forEach((btn, i) => {
-    btn.classList.toggle('active', ['all','juice','drink','snack'][i] === cat);
-  });
+  if (btn) {
+    document.querySelectorAll('#page-recipe .cat-bar .cat-bar-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
   renderRecipes();
 }
 
@@ -1891,12 +2003,12 @@ function renderRecipes() {
 let juiceFilter = '';
 let saleCatFilter = 'all';
 
-function filterSaleCat(cat) {
+function filterSaleCat(cat, btn) {
   saleCatFilter = cat;
-  ['all','juice','drink','snack'].forEach((c,i) => {
-    const btn = document.getElementById('saleCat' + c.charAt(0).toUpperCase() + c.slice(1));
-    if (btn) btn.classList.toggle('active', c === cat);
-  });
+  if (btn) {
+    document.querySelectorAll('#page-sale .cat-bar .cat-bar-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
   renderJuiceGrid();
 }
 
@@ -2654,7 +2766,35 @@ function showToast(msg) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
-// ==================== OFFLINE QUEUE (IndexedDB) ====================
+// ==================== UNDO ====================
+async function undoLastSale() {
+  if (sales.length === 0) { showToast('Koi sale nahi hui abhi'); return; }
+  const last = sales[0];
+  if (!confirm(`"${last.recipeName} × ${last.qty}" undo karna hai? Stock wapas aa jaega.`)) return;
+
+  const recipe = Object.values(recipes).find(r => r.id === last.recipeId);
+  const ings = (last.ingredients && last.ingredients.length > 0)
+    ? last.ingredients : (recipe?.ingredients || []);
+
+  const batch = db.batch();
+  for (const ing of ings) {
+    if (!ing.itemId || !ing.qty) continue;
+    const item = stockItems[ing.itemId];
+    if (!item) continue;
+    let restore = ing.qty * (last.qty || 1);
+    if (item.unit === 'L' && ing.unit === 'ml') restore /= 1000;
+    else if (item.unit === 'Kg' && ing.unit === 'g') restore /= 1000;
+    else if (item.unit === 'Doz' && ing.unit === 'pcs') restore /= 12;
+    batch.update(db.collection('juiceShop_stock').doc(ing.itemId), {
+      qty: firebase.firestore.FieldValue.increment(restore)
+    });
+  }
+  batch.delete(db.collection('juiceShop_sales').doc(last.id));
+  await batch.commit();
+  showToast(`Undo ho gaya — ${last.recipeName} wapas ✓`);
+}
+
+
 let offlineDB = null;
 
 function initOfflineDB() {
